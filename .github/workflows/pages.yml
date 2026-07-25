@@ -33,7 +33,7 @@ jobs:
       - name: Keep the brand assets in sync with media/
         run: cp media/microk8s-mcp-mark.svg media/microk8s-mcp-lockup-reverse.svg doc/assets/
 
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
 
       - uses: actions/upload-pages-artifact@v4
         with:
