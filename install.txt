@@ -1,0 +1,593 @@
+microk8s-mcp — INSTALLATION
+===========================
+
+An MCP server that exposes a MicroK8s cluster to the `claude` CLI. Read-only by
+default; every mutating capability is behind a separate switch.
+
+This file is the step-by-step install. README.md has the design rationale, the
+full configuration table and the tool inventory. `make help` lists every target
+mentioned below.
+
+The short version, when MicroK8s runs on another machine — all three commands
+from your workstation, nothing installed on the node:
+
+    make install
+    make node-setup SSH_HOST=pierre@k8s.lan
+    make register   SSH_HOST=pierre@k8s.lan
+
+The rest of this file explains what each of those does and how to vary it.
+
+
+-------------------------------------------------------------------------------
+0. DECIDE WHERE THE SERVER RUNS
+-------------------------------------------------------------------------------
+
+Two topologies. Pick one before you start, because it decides which machine you
+run steps 2 and 3 on.
+
+  A) Server on your workstation (recommended)
+
+       workstation                                  microk8s node
+       claude CLI ── stdio ── mcp server ── :16443 ── kube-apiserver
+                                         └─ ssh ───── microk8s snap
+
+     Install on the workstation. It holds a scoped kubeconfig and reaches the
+     API server over the network. SSH is only needed for `microk8s_status` and
+     `manage_addon`; skip it and everything else still works.
+
+  B) Server on the node
+
+       workstation                                  microk8s node
+       claude CLI ── ssh ──────────────────────────── mcp server ── localhost
+
+     Install on the node. No SSH config needed; the node backend runs locally.
+
+The rest of this file assumes topology A and calls out where B differs.
+
+
+-------------------------------------------------------------------------------
+1. PREREQUISITES
+-------------------------------------------------------------------------------
+
+On the machine that will run the server:
+
+  * Python 3.10 or newer
+  * `python3-venv` (Debian/Ubuntu: `sudo apt install python3-venv`)
+  * The `claude` CLI, if this is the machine you run Claude Code on
+  * `kubectl` on PATH — strongly recommended, and the only path that honours
+    the scoped kubeconfig. Without it the server falls back to
+    `microk8s kubectl` on the node, which runs under MicroK8s' own ADMIN
+    credential: the bundled reader role no longer constrains anything, and
+    Secrets become readable again. Every kubectl-level tool is affected; only
+    microk8s_status and the addon half of cluster_overview are not.
+
+    Match your cluster's minor version. No root required:
+
+        V=v1.26.15   # match `kubectl version` on the node
+        curl -fsSLO "https://dl.k8s.io/release/$V/bin/linux/amd64/kubectl"
+        curl -fsSLO "https://dl.k8s.io/release/$V/bin/linux/amd64/kubectl.sha256"
+        echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check
+        install -m 755 kubectl ~/.local/bin/kubectl
+
+    `make register` bakes the absolute path in as MICROK8S_MCP_KUBECTL, since
+    Claude Code launches the server with its own PATH.
+  * `ssh` on PATH, if you want addon management under topology A
+
+On the MicroK8s node:
+
+  * A running MicroK8s cluster (`microk8s status --wait-ready`)
+
+Check what you have:
+
+    make doctor
+
+That prints your Python version, whether the venv exists, and whether kubectl,
+claude, ssh and the kubeconfig are present. Nothing is installed by it.
+
+Add SSH_HOST and it also probes the node:
+
+    make doctor SSH_HOST=pierre@k8s.lan
+
+which reports whether the node is reachable, whether microk8s is on PATH in a
+non-interactive shell there, and which API server address will be used.
+
+
+-------------------------------------------------------------------------------
+2. INSTALL THE SERVER
+-------------------------------------------------------------------------------
+
+    git clone <this-repo> microk8s-mcp
+    cd microk8s-mcp
+    make install
+
+That creates `.venv/`, upgrades pip, and installs the package in editable mode.
+Verify:
+
+    make check
+
+Expected output:
+
+    import ok: microk8s_mcp.server.main
+    entry point ok: /abs/path/to/microk8s-mcp/.venv/bin/microk8s-mcp
+
+Note the absolute path — you need it in step 4, and it must be absolute.
+
+To use a specific interpreter:
+
+    make install PYTHON=python3.12
+
+For lint tooling as well:
+
+    make dev
+
+--- 2b. INSTALLING OUTSIDE THE REPO -----------------------------------------
+
+The default install is EDITABLE: `.venv/` holds only a link back to this
+checkout, and the source has to stay where it is. Fine while you are iterating,
+but it means the registered server breaks if you ever move, rename or delete
+the repo — and if you registered at user scope, it breaks in every project at
+once.
+
+For an install that does not care where the checkout lives, put the venv
+somewhere stable and pass EDITABLE=0:
+
+    make install VENV=~/.local/share/microk8s-mcp/venv EDITABLE=0
+
+`~/.local/share` needs no root. /opt/microk8s-mcp/venv works equally well but
+has to exist and be yours first:
+
+    sudo install -d -o "$USER" -g "$USER" -m 755 /opt/microk8s-mcp
+
+EDITABLE=0 copies the package into the venv rather than linking it, so the
+result is self-contained. Confirm that, rather than assuming:
+
+    ls <venv>/lib/python*/site-packages/ | grep -i editable   # expect: nothing
+    ls <venv>/lib/python*/site-packages/microk8s_mcp/         # expect: real files
+
+The conclusive test is to make the checkout unavailable and see whether the
+server still starts:
+
+    mv ~/Repositories/microk8s-mcp /tmp/moved-aside
+    cd /tmp && <venv>/bin/microk8s-mcp < /dev/null    # expect the startup log
+    mv /tmp/moved-aside ~/Repositories/microk8s-mcp
+
+    THE TRADEOFF. Edits to server.py no longer take effect immediately. After
+    changing source you must reinstall:
+
+        make install VENV=~/.local/share/microk8s-mcp/venv EDITABLE=0
+
+    The target force-reinstalls the package on every run. That is deliberate:
+    pip treats an already-installed same-version package as satisfied, so a
+    plain `pip install .` would silently leave stale code in place while
+    reporting success.
+
+Every target that needs the venv accepts VENV=, so pass it consistently:
+
+    make check       VENV=~/.local/share/microk8s-mcp/venv
+    make register    VENV=~/.local/share/microk8s-mcp/venv SSH_HOST=...
+    make register-rw VENV=~/.local/share/microk8s-mcp/venv SSH_HOST=...
+
+The in-repo `.venv/` can stay for development; `make distclean` only removes
+that one and leaves an out-of-repo install alone.
+
+
+-------------------------------------------------------------------------------
+3. GIVE IT A SCOPED IDENTITY
+-------------------------------------------------------------------------------
+
+Do not hand the server your admin kubeconfig. Mint a credential bound to a
+purpose-built ServiceAccount instead.
+
+These steps act on the cluster, so they have to reach the node. Under topology A
+the node is a different machine — the node-* targets do all of it over SSH from
+your workstation. Nothing is installed on the node; SSH is used only to run
+kubectl there and stream the result back.
+
+--- 3-REMOTE. The node is another machine (topology A) --------------------
+
+    make node-setup SSH_HOST=pierre@k8s.lan
+
+That is the whole of step 3. It runs, in order:
+
+    check-apiserver  the API server address resolves and answers from here
+    node-check       ssh reachability, microk8s on PATH, kubectl runnable
+    node-rbac        streams rbac.yaml to `microk8s kubectl apply -f -`
+    node-kubeconfig  runs make-kubeconfig.sh on the node via `bash -s`,
+                     captures stdout here, writes ~/.kube/claude-mcp.kubeconfig
+                     mode 600
+
+APISERVER defaults to https://<node>:16443, where <node> is SSH_HOST resolved
+through `ssh -G`. That resolution matters: SSH_HOST is very often an alias from
+~/.ssh/config, and kubectl does not read that file. Given
+
+    Host k8s-node
+        HostName 10.0.0.5
+
+then `make node-setup SSH_HOST=k8s-node` bakes https://10.0.0.5:16443 into
+the kubeconfig, not the unusable https://k8s-node:16443. `ssh -G` only parses
+config; it does not connect. If ssh is missing or too old to support -G, the
+bare host from SSH_HOST is used instead.
+
+Override when the node answers on a different address than you reach it at:
+
+    make node-setup SSH_HOST=pierre@10.0.0.5 APISERVER=https://k8s.lan:16443
+
+Either way the address is validated before anything is minted. If it does not
+resolve on this machine, make stops and tells you to pass APISERVER — better
+than handing you a kubeconfig that ssh can reach and kubectl cannot. If it
+resolves but nothing answers on the port you get a warning, not a failure,
+since the node may simply be behind a VPN that is currently down.
+
+Two things worth checking on the node the first time, because they are the
+usual causes of a kubeconfig that mints fine and then fails at runtime:
+
+    # is the address you are baking in one of the cert's SANs?
+    ssh pierre@k8s.lan 'openssl x509 -in \
+      /var/snap/microk8s/current/certs/server.crt -noout -text' | grep -A3 "Alternative Name"
+
+    # is the API server actually listening?
+    ssh pierre@k8s.lan 'ss -ltn | grep 16443'
+
+Other variables these targets accept:
+
+    SSH_KEY          identity file, if not using an agent
+    SSH_OPTS         replaces the default `-o ConnectTimeout=10`; use for a
+                     jump host, e.g. SSH_OPTS='-J bastion -o ConnectTimeout=10'
+    KUBECTL          default `microk8s kubectl`; see the PATH note in §7
+    NAMESPACE        ServiceAccount namespace, default mcp-system
+    KUBECONFIG_OUT   where to write the kubeconfig locally
+
+The kubeconfig is written to a temp file and validated (is it a Config? does it
+carry a token?) before replacing the destination, so a dropped connection or a
+failed remote script can never leave a truncated credential in place. On any
+failure the existing file is left untouched and make exits non-zero.
+
+Run the pieces individually if you'd rather go one at a time:
+
+    make node-check      SSH_HOST=pierre@k8s.lan
+    make node-rbac       SSH_HOST=pierre@k8s.lan
+    make node-kubeconfig SSH_HOST=pierre@k8s.lan
+    make node-status     SSH_HOST=pierre@k8s.lan   # microk8s status on the node
+
+--- 3-LOCAL. You are already on the node (topology B) ---------------------
+
+3a. Apply the RBAC role:
+
+    make rbac
+
+    Equivalent to: microk8s kubectl apply -f rbac.yaml
+
+3b. Mint the kubeconfig. APISERVER is required here — there is no SSH_HOST to
+    infer it from:
+
+    make kubeconfig APISERVER=https://k8s.lan:16443
+
+--- What step 3 created ---------------------------------------------------
+
+    The `mcp-system` namespace, a `claude-mcp` ServiceAccount, a long-lived
+    token Secret, and a reader ClusterRole bound to it. The reader role grants
+    get/list/watch cluster-wide EXCEPT Secrets — deliberately, so cluster
+    credentials can never land in a model context.
+
+3d. WRITE ACCESS — note the current state of this checkout.
+
+    The `claude-mcp-operator` ClusterRoleBinding at the bottom of rbac.yaml is
+    UNCOMMENTED. Applying rbac.yaml therefore grants create/update/patch/delete
+    on deployments, statefulsets, daemonsets, pods, services, configmaps, PVCs,
+    jobs, cronjobs, ingresses and networkpolicies — in EVERY namespace — plus
+    node patch and pod eviction. Secrets stay excluded; neither role grants them.
+
+    To go back to read-only, comment that binding out and re-apply:
+
+        make node-rbac SSH_HOST=pierre@k8s.lan
+
+    (Removing a binding needs an apply of the edited file; `kubectl apply` will
+    not delete a binding you merely deleted from the YAML, so if you want it
+    gone immediately:
+        ssh pierre@k8s.lan 'microk8s kubectl delete clusterrolebinding claude-mcp-operator')
+
+    To narrow it instead of removing it, replace the ClusterRoleBinding with a
+    RoleBinding per namespace — same roleRef and subjects, plus a namespace:
+
+        kind: RoleBinding
+        metadata:
+          name: claude-mcp-operator
+          namespace: apps          # one per namespace you want writable
+
+    WHY THIS MATTERS. RBAC and the env vars in step 4 are independent layers,
+    and only one of them is a security boundary:
+
+        RBAC (rbac.yaml)      what the credential is ABLE to do.
+                              Enforced by the API server. Real.
+
+        env vars (step 4)     what this server is WILLING to do.
+                              Enforced by this process. A convenience, not a
+                              boundary — anything holding the token ignores it.
+
+    Set both. If the token is bound only to the reader role, then
+    MICROK8S_MCP_MODE=read-write still cannot hurt you — the API server refuses.
+    The reverse is not true: MICROK8S_MCP_NAMESPACES=apps does not stop a
+    cluster-wide binding from being cluster-wide.
+
+    Check what the credential can actually do, rather than trusting either
+    layer's configuration:
+
+        kubectl --kubeconfig ~/.kube/claude-mcp.kubeconfig auth can-i --list
+        kubectl --kubeconfig ~/.kube/claude-mcp.kubeconfig auth can-i delete deployments -n kube-system
+        kubectl --kubeconfig ~/.kube/claude-mcp.kubeconfig auth can-i list secrets -A     # expect: no
+
+
+-------------------------------------------------------------------------------
+4. REGISTER WITH THE CLAUDE CLI
+-------------------------------------------------------------------------------
+
+Read-only, which is where you should start:
+
+    make register SSH_HOST=pierre@k8s.lan
+
+That expands to roughly:
+
+    claude mcp add --transport stdio microk8s \
+      --env MICROK8S_MCP_KUBECONFIG=$HOME/.kube/claude-mcp.kubeconfig \
+      --env MICROK8S_MCP_SSH_HOST=pierre@k8s.lan \
+      -- /abs/path/to/microk8s-mcp/.venv/bin/microk8s-mcp
+
+Full management, scoped to a couple of namespaces:
+
+    make register-rw SSH_HOST=pierre@k8s.lan NAMESPACES=apps,staging
+
+That registers under the name `microk8s-rw`, sets MICROK8S_MCP_MODE=read-write,
+and prints the resulting grant before it acts, e.g.
+
+    Registering 'microk8s-rw' read-write:
+      namespaces:        apps,staging
+      addon changes:     true
+      node cordon/drain: false
+      protected writes:  false
+
+Four switches control the rest:
+
+    RW_SERVER_NAME          default microk8s-rw. Pass RW_SERVER_NAME=microk8s
+                            to REPLACE the read-only entry rather than run two
+                            side by side.
+    ALLOW_ADDON_CHANGES     default true. Lets manage_addon run
+                            `microk8s enable/disable` over SSH. This is
+                            snap-level root on the node — RBAC does not
+                            constrain it at all.
+    ALLOW_NODE_OPS          default false. Enables node_maintenance
+                            (cordon/uncordon/drain). On a single-node cluster a
+                            drain evicts everything with nowhere to reschedule.
+    ALLOW_PROTECTED_WRITES  default false. Permits writes to kube-system,
+                            kube-public, kube-node-lease and default.
+
+    make register-rw SSH_HOST=pierre@k8s.lan NAMESPACES=apps \
+      ALLOW_NODE_OPS=true ALLOW_PROTECTED_WRITES=true
+
+Running both side by side works well: a read-only `microk8s` entry pointed at
+everything, and a `microk8s-rw` entry scoped to the namespaces you actually
+deploy to. Pass RW_SERVER_NAME=microk8s if you would rather have one entry —
+two registrations mean every tool appears twice in a session.
+
+Variables the register targets accept:
+
+    SERVER_NAME       name to register under (default: microk8s)
+    KUBECONFIG_PATH   path to the scoped kubeconfig
+    SSH_HOST          user@host for the node backend; omit under topology B
+    SSH_KEY           identity file, if not using an agent
+    NAMESPACES        comma-separated namespace allowlist
+    SCOPE             pass SCOPE=user to register for every project
+    KUBECTL_BIN       local kubectl to bake in; defaults to `command -v
+                      kubectl`. Set KUBECTL_BIN= (empty) to omit it and let
+                      the server resolve kubectl from its own PATH.
+
+Under topology B, omit SSH_HOST entirely — the node backend runs locally.
+
+Verify:
+
+    make list          # or: claude mcp list
+
+Two things that make a healthy registration look like a missing one:
+
+  * SCOPE. Without SCOPE=user the entry is LOCAL — stored per-project and only
+    visible when your working directory is inside that project. `claude mcp
+    list` run from anywhere else will not show it, and nothing is wrong.
+    Check where it actually landed:
+
+        claude mcp get microk8s
+        # or, exhaustively:
+        python3 -c "import json,os; d=json.load(open(os.path.expanduser('~/.claude.json'))); \
+          print('user:', list(d.get('mcpServers',{}))); \
+          print('project:', {p: list(v.get('mcpServers') or {}) for p,v in d.get('projects',{}).items() if v.get('mcpServers')})"
+
+  * RESTART. Claude Code loads MCP servers at session start. A server
+    registered during a running session will not appear in /mcp until you
+    restart, whatever its scope.
+
+Then open a Claude Code session and run /mcp to see the tool inventory.
+
+To remove:
+
+    make unregister SERVER_NAME=microk8s
+
+
+-------------------------------------------------------------------------------
+5. CONFIGURATION
+-------------------------------------------------------------------------------
+
+Everything is environment variables, passed via `--env` at registration time.
+The register targets set the common ones; add any others by editing the entry
+with `claude mcp add` again, or by calling the CLI directly.
+
+The full table is in README.md. The ones that matter most:
+
+    MICROK8S_MCP_MODE                    read-only (default) | read-write
+    MICROK8S_MCP_KUBECONFIG              path to the scoped kubeconfig
+    MICROK8S_MCP_KUBECTL                 absolute path to kubectl; see below
+    MICROK8S_MCP_SSH_HOST                user@host for the node backend
+    MICROK8S_MCP_NAMESPACES              namespace allowlist, default *
+    MICROK8S_MCP_ALLOW_ADDON_CHANGES     false by default
+    MICROK8S_MCP_ALLOW_NODE_OPS          false by default (cordon/drain)
+    MICROK8S_MCP_ALLOW_PROTECTED_WRITES  false by default
+    MICROK8S_MCP_LOG_LEVEL               INFO; every command is logged to stderr
+
+MICROK8S_MCP_KUBECTL is worth setting explicitly, and `make register` does it
+for you. If the server cannot find kubectl it falls back to `microk8s kubectl`
+on the node, which runs under the node's ADMIN credential — the scoped
+kubeconfig and the RBAC role stop applying, silently. A kubectl in ~/.local/bin
+is on your PATH but not necessarily on the PATH Claude Code hands the server,
+so relying on PATH is how you end up escalated without noticing. The server
+logs a WARNING whenever it takes that fallback; grep your MCP logs for
+"falling back to `microk8s kubectl`".
+
+Inspect what is actually registered at any time:
+
+    claude mcp get microk8s
+
+
+-------------------------------------------------------------------------------
+6. UPGRADING AND UNINSTALLING
+-------------------------------------------------------------------------------
+
+Upgrade depends on which install you have.
+
+    Editable (the default, .venv inside the repo) — a pull is usually enough,
+    since the venv reads the source directly:
+
+        git pull
+        make install        # re-run only if dependencies changed
+        make check
+
+    Copy install (EDITABLE=0, venv outside the repo) — the pull changes nothing
+    until you reinstall, because the venv holds its own copy:
+
+        git pull
+        make install VENV=~/.local/share/microk8s-mcp/venv EDITABLE=0
+        make check   VENV=~/.local/share/microk8s-mcp/venv
+
+    Forgetting the reinstall is the failure mode here: everything reports
+    success and the old code keeps running. If behaviour does not match the
+    source, ask the venv where it is importing from — but run it from OUTSIDE
+    the checkout:
+
+        cd /tmp && ~/.local/share/microk8s-mcp/venv/bin/python -c \
+          "import microk8s_mcp, inspect; print(inspect.getfile(microk8s_mcp))"
+
+    A path under site-packages is a copy install; a path inside the repo means
+    it is editable after all.
+
+    The `cd /tmp` is not incidental. `python -c` prepends the current directory
+    to sys.path, so running this from the repo root imports the local
+    microk8s_mcp/ source and reports the repo path no matter how the venv was
+    built — a copy install looks editable. On Python 3.11+ you can instead pass
+    -P, which disables that prepending:
+
+        ~/.local/share/microk8s-mcp/venv/bin/python -P -c \
+          "import microk8s_mcp, inspect; print(inspect.getfile(microk8s_mcp))"
+
+    The same shadowing applies to anything you run from the repo root against
+    an out-of-repo venv, `make check` included: it proves the entry point and
+    the package name resolve, not which copy of the code answered.
+
+Drop write access but keep the server (revert to read-only, both layers):
+
+    # 1. RBAC: remove the operator binding
+    ssh <node> 'microk8s kubectl delete clusterrolebinding claude-mcp-operator'
+    #    and comment the binding out in rbac.yaml so the next apply agrees
+
+    # 2. Server: re-register without the write env vars
+    make unregister SERVER_NAME=microk8s
+    make register   SSH_HOST=<node>
+
+    # 3. Confirm
+    kubectl --kubeconfig ~/.kube/claude-mcp.kubeconfig auth can-i create deployments
+    # expect: no
+
+Uninstall:
+
+    make unregister SERVER_NAME=microk8s
+    make distclean      # removes .venv and all build artefacts
+
+Then, if you want the cluster-side identity gone too:
+
+    make node-teardown SSH_HOST=pierre@k8s.lan
+
+or, sitting on the node: `microk8s kubectl delete -f rbac.yaml`. Delete the
+local kubeconfig as well — it holds a live token until the Secret is gone:
+
+    rm -f ~/.kube/claude-mcp.kubeconfig
+
+
+-------------------------------------------------------------------------------
+7. TROUBLESHOOTING
+-------------------------------------------------------------------------------
+
+"Server shows disconnected in `claude mcp list`"
+    Claude Code launches subprocesses with a different environment than your
+    shell. The command must be an ABSOLUTE path to the venv binary. `make
+    register` always uses an absolute path; if you registered by hand, check it.
+    Confirm the binary works standalone: `make check`.
+
+"No module named microk8s_mcp"
+    The venv is stale or the install did not complete. `make distclean install`.
+
+"connection refused on :16443"
+    MicroK8s only binds the API server to addresses in its certificate SANs. If
+    you connect by hostname or a non-primary IP, add it to
+    /var/snap/microk8s/current/certs/csr.conf.template on the node and run
+    `microk8s refresh-certs --cert server.crt`.
+
+"'<host>' does not resolve on this machine" (from make node-check)
+    The API server address is not usable from here. Almost always an ~/.ssh/
+    config alias that `ssh -G` could not expand, or a name only the node knows.
+    Pass the real one:
+
+        make node-setup SSH_HOST=<alias> APISERVER=https://<ip-or-dns>:16443
+
+    Nothing was minted; this fires before any cluster contact.
+
+"x509: certificate is valid for ..., not <host>" at runtime
+    The address in the kubeconfig is reachable but not in the API server's SANs.
+    Check which are present:
+
+        ssh <node> 'openssl x509 -in \
+          /var/snap/microk8s/current/certs/server.crt -noout -text' \
+          | grep -A3 "Alternative Name"
+
+    Then either re-mint against an address that is listed, or add yours to
+    csr.conf.template and run `microk8s refresh-certs --cert server.crt`.
+
+"Secret mcp-system/claude-mcp-token not found"
+    The RBAC step did not run, or ran against a different cluster. Re-run
+    `make node-rbac SSH_HOST=...`, then `make node-kubeconfig SSH_HOST=...`.
+
+"microk8s not on PATH in a non-interactive shell" (from make node-check)
+    SSH command execution does not source your login profile, so /snap/bin is
+    often missing. Point the setup targets at the absolute path:
+
+        make node-setup SSH_HOST=pierre@k8s.lan KUBECTL='/snap/bin/microk8s kubectl'
+
+    This is the same root cause as the runtime version below, but a separate
+    setting — KUBECTL is used by the node-* targets, MICROK8S_MCP_MICROK8S by
+    the running server.
+
+"microk8s: command not found over SSH" (at runtime, from the server)
+    Same PATH problem, server side. Register with
+    --env MICROK8S_MCP_MICROK8S=/snap/bin/microk8s.
+
+"cannot reach <host> over ssh" (from make node-check)
+    Check `ssh pierre@k8s.lan true` works on its own first. If you need a key or
+    a jump host, pass SSH_KEY=~/.ssh/id_ed25519 or replace the options
+    wholesale: SSH_OPTS='-J bastion -o ConnectTimeout=10'. The node-* targets
+    do not force BatchMode, so password and passphrase prompts still work.
+
+"Remote script failed; ... left untouched"
+    node-kubeconfig validates before it writes, so nothing was damaged. Run
+    `make node-check SSH_HOST=...` to find which precondition is missing, and
+    `make node-rbac SSH_HOST=...` if the token Secret does not exist yet.
+
+"metrics-server errors from the `top` tool"
+    Enable the addon on the node: `microk8s enable metrics-server`.
+
+"Permission denied writing the kubeconfig"
+    KUBECONFIG_OUT points somewhere you cannot write. Override it:
+    `make kubeconfig APISERVER=... KUBECONFIG_OUT=/tmp/claude-mcp.kubeconfig`.

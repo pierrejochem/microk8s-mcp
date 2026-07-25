@@ -1,0 +1,46 @@
+# --- credentials ----------------------------------------------------------
+# A minted kubeconfig carries a live ServiceAccount token. Never commit one,
+# even the scoped reader identity.
+*.kubeconfig
+kubeconfig
+claude-mcp.kubeconfig
+*.pem
+*.key
+*.crt
+
+# --- virtualenvs ----------------------------------------------------------
+.venv/
+venv/
+env/
+ENV/
+
+# --- python ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# --- packaging ------------------------------------------------------------
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# --- tooling caches -------------------------------------------------------
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# --- editors --------------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*~
+
+# --- os -------------------------------------------------------------------
+.DS_Store
+Thumbs.db

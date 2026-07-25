@@ -1,0 +1,150 @@
+# Scoped identity for the MicroK8s MCP server.
+#
+# Two ClusterRoles are defined:
+#   claude-mcp-reader    - read everything except Secrets
+#   claude-mcp-operator  - additionally mutate workloads
+#
+# BOTH bindings are currently active, so this grants cluster-wide write. To
+# revert to read-only, comment out the claude-mcp-operator ClusterRoleBinding
+# at the bottom -- and note that `apply` will not remove an already-created
+# binding, so delete it explicitly:
+#   microk8s kubectl delete clusterrolebinding claude-mcp-operator
+#
+# Apply with:  microk8s kubectl apply -f rbac.yaml
+# Audit with:  kubectl --kubeconfig <scoped> auth can-i --list
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mcp-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: claude-mcp
+  namespace: mcp-system
+---
+# Long-lived token. Prefer `kubectl create token claude-mcp -n mcp-system
+# --duration=24h` if you would rather rotate short-lived credentials.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: claude-mcp-token
+  namespace: mcp-system
+  annotations:
+    kubernetes.io/service-account.name: claude-mcp
+type: kubernetes.io/service-account-token
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: claude-mcp-reader
+rules:
+  # Core resources -- note that "secrets" is deliberately absent, so the model
+  # can never read credentials out of the cluster.
+  - apiGroups: [""]
+    resources:
+      - pods
+      - pods/log
+      - pods/status
+      - services
+      - endpoints
+      - configmaps
+      - namespaces
+      - nodes
+      - nodes/status
+      - persistentvolumes
+      - persistentvolumeclaims
+      - events
+      - serviceaccounts
+      - replicationcontrollers
+      - resourcequotas
+      - limitranges
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses", "networkpolicies", "ingressclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses", "volumeattachments"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["nodes", "pods"]
+    verbs: ["get", "list"]
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["policy"]
+    resources: ["poddisruptionbudgets"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: claude-mcp-operator
+rules:
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - deployments/scale
+      - statefulsets
+      - statefulsets/scale
+      - daemonsets
+    verbs: ["create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods", "services", "configmaps", "persistentvolumeclaims"]
+    verbs: ["create", "update", "patch", "delete"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["create", "update", "patch", "delete"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses", "networkpolicies"]
+    verbs: ["create", "update", "patch", "delete"]
+  # Required for node_maintenance (cordon / drain).
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["patch", "update"]
+  - apiGroups: [""]
+    resources: ["pods/eviction"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: claude-mcp-reader
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: claude-mcp-reader
+subjects:
+  - kind: ServiceAccount
+    name: claude-mcp
+    namespace: mcp-system
+---
+# ENABLED: grants write access in EVERY namespace, including kube-system.
+# Comment this binding out (and re-apply) to drop back to read-only.
+#
+# To narrow it instead, replace this with per-namespace RoleBindings:
+#   kind: RoleBinding / metadata.namespace: <ns> / same roleRef and subjects.
+# That is the only limit the API server enforces; MICROK8S_MCP_NAMESPACES is
+# what this server is willing to do, not what the credential is able to do.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: claude-mcp-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: claude-mcp-operator
+subjects:
+  - kind: ServiceAccount
+    name: claude-mcp
+    namespace: mcp-system
