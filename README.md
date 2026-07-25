@@ -94,7 +94,7 @@ Step-by-step instructions, including both topologies, are in `install.txt`.
 
 ## Give it a scoped identity
 
-Don't hand it your admin kubeconfig. On the node:
+Don't hand it your admin kubeconfig.
 
 If the node is another machine — the usual case, and topology A — do it all
 from your workstation over SSH:
