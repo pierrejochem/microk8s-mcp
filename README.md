@@ -1,4 +1,4 @@
-![microk8s-mcp — Model Context Protocol server](media/microk8s-mcp-lockup-reverse.svg)
+![microk8s-mcp — Model Context Protocol server](https://raw.githubusercontent.com/pierrejochem/microk8s-mcp/main/media/microk8s-mcp-lockup-reverse.svg)
 
 An MCP server that lets the `claude` CLI operate a MicroK8s cluster: inspect
 workloads, read logs, triage failures, and — when you unlock it — scale, apply
@@ -14,8 +14,7 @@ separate switch.
 [security model](https://pierrejochem.github.io/microk8s-mcp/security.html) ·
 [troubleshooting](https://pierrejochem.github.io/microk8s-mcp/troubleshooting.html)
 
-> [!WARNING]
-> **`rbac.yaml` in this repo grants cluster-wide write.** The
+> **⚠️ WARNING — `rbac.yaml` in this repo grants cluster-wide write.** The
 > `claude-mcp-operator` ClusterRoleBinding is active, so `kubectl apply -f
 > rbac.yaml` gives the ServiceAccount `create/update/patch/delete` on workloads
 > **in every namespace**, plus node cordon/drain and pod eviction. Secrets stay
@@ -358,4 +357,4 @@ security fixes are enabled on the repo.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](https://github.com/pierrejochem/microk8s-mcp/blob/main/LICENSE).
