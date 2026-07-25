@@ -1,6 +1,8 @@
 ![microk8s-mcp — Model Context Protocol server](https://raw.githubusercontent.com/pierrejochem/microk8s-mcp/main/media/microk8s-mcp-lockup-reverse.svg)
 
 [![PyPI](https://img.shields.io/pypi/v/microk8s-mcp?color=326ce5&label=pypi)](https://pypi.org/project/microk8s-mcp/)
+[![Python versions](https://img.shields.io/pypi/pyversions/microk8s-mcp?color=326ce5)](https://pypi.org/project/microk8s-mcp/)
+[![License: MIT](https://img.shields.io/pypi/l/microk8s-mcp?color=326ce5)](https://github.com/pierrejochem/microk8s-mcp/blob/main/LICENSE)
 
 An MCP server that lets the `claude` CLI operate a MicroK8s cluster: inspect
 workloads, read logs, triage failures, and — when you unlock it — scale, apply

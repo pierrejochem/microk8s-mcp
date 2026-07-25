@@ -12,7 +12,12 @@ classifiers = [
   "Development Status :: 4 - Beta",
   "Environment :: Console",
   "Intended Audience :: System Administrators",
+  # Kept in step with the CI test matrix; PyPI and the pyversions badge read these.
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: System :: Systems Administration",
   "Topic :: Utilities",
 ]
