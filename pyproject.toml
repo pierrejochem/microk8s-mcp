@@ -2,7 +2,10 @@
 name = "microk8s-mcp"
 version = "0.1.0"
 description = "MCP server for managing a MicroK8s cluster from the Claude CLI"
+readme = "README.md"
 requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
 dependencies = ["mcp>=1.9"]
 
 [project.scripts]

@@ -292,3 +292,9 @@ non-interactive shell's PATH. Point at it directly:
 
 **`metrics-server` errors from `top`** — enable the addon:
 `microk8s enable metrics-server`.
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE).
