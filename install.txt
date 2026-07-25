@@ -530,6 +530,24 @@ local kubeconfig as well — it holds a live token until the Secret is gone:
 "No module named microk8s_mcp"
     The venv is stale or the install did not complete. `make distclean install`.
 
+"bad interpreter" / "Defekter Interpreter" after moving or renaming the repo
+    Virtualenvs are not relocatable. Scripts in <venv>/bin hardcode the absolute
+    path of the interpreter that created them, and an editable install records
+    the absolute path of the checkout — renaming the directory breaks both, and
+    `make install` cannot repair it because pip itself is one of those scripts.
+    Rebuild:
+
+        make distclean install
+
+    An out-of-repo copy install (§2b) is immune to repo renames — that is the
+    point of it. Moving the VENV itself has the same problem though, so
+    reinstall rather than `mv` a venv.
+
+    Note that a `make check` run before this fix would have PASSED here, via cwd
+    shadowing: the local microk8s_mcp/ source satisfied the import while the
+    venv was in fact broken. The target now runs from / and prints
+    "resolved from:", so you can see which copy of the code actually answered.
+
 "connection refused on :16443"
     MicroK8s only binds the API server to addresses in its certificate SANs. If
     you connect by hostname or a non-primary IP, add it to

@@ -168,7 +168,13 @@ dev: install ## Install plus lint/format tooling
 
 check: ## Verify the package imports and the entry point resolves
 	@test -x "$(ENTRY)" || { echo "Not installed — run 'make install' first." >&2; exit 1; }
-	@$(PY) -c "from microk8s_mcp.server import main; print('import ok: microk8s_mcp.server.main')"
+	@# Run from / on purpose: `python -c` prepends the cwd to sys.path, so a check
+	@# from the repo root imports the local microk8s_mcp/ source and passes even
+	@# when nothing is installed in the venv at all.
+	@cd / && $(abspath $(PY)) -c \
+	  "from microk8s_mcp.server import main; print('import ok: microk8s_mcp.server.main')"
+	@cd / && $(abspath $(PY)) -c \
+	  "import microk8s_mcp, inspect; print('resolved from:', inspect.getfile(microk8s_mcp))"
 	@echo "entry point ok: $(ENTRY)"
 
 doctor: ## Report on the host prerequisites
