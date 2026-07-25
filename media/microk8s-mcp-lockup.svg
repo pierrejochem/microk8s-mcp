@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 110" width="840" height="220">
+  
+  <g transform="translate(16,20) scale(0.7)">
+    <path d="M24 24 24 88M24 62 24 70 52 70 52 24" fill="none" stroke="#326ce5" stroke-width="9" stroke-linejoin="miter"></path>
+    <g fill="none" stroke="#1d1f20" stroke-width="3"><rect x="64" y="30" width="16" height="16"></rect><rect x="64" y="50" width="16" height="16"></rect></g>
+    <rect x="68" y="54" width="8" height="8" fill="#e95420"></rect>
+  </g>
+  <text x="104" y="58" font-family="Barlow Condensed, Barlow, Arial Narrow, sans-serif" font-weight="600" font-size="46" letter-spacing="1.4" fill="#1d1f20">MICROK8S<tspan fill="#326ce5">·MCP</tspan></text>
+  <text x="106" y="80" font-family="Barlow Condensed, Barlow, Arial Narrow, sans-serif" font-size="15" letter-spacing="3" fill="#1d1f20" opacity="0.6">MODEL CONTEXT PROTOCOL SERVER</text>
+</svg>
