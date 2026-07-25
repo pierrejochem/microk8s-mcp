@@ -1,3 +1,5 @@
+![microk8s-mcp — Model Context Protocol server](media/microk8s-mcp-lockup-reverse.svg)
+
 # microk8s-mcp
 
 An MCP server that lets the `claude` CLI operate a MicroK8s cluster: inspect
