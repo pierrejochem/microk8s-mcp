@@ -35,6 +35,12 @@ dist/
 .coverage.*
 htmlcov/
 
+# --- scratch artefacts ----------------------------------------------------
+# Browser-automation output lands in the working directory; it is never part
+# of the project.
+.playwright-mcp/
+/*.png
+
 # --- editors --------------------------------------------------------------
 .claude/settings.local.json
 .idea/
