@@ -4,6 +4,11 @@
 :root {
   --blue: #326ce5;
   --blue-dark: #2456bd;
+  /* Chrome that carries white text needs a deeper blue than the brand tone:
+     white on #326ce5 is only 3.6:1, and on the dark-mode link blue 2.5:1.
+     #2456bd gives 6.7:1 and stays on-brand. */
+  --chrome: #2456bd;
+  --chrome-text: #ffffff;
   --orange: #e95420;
   --ink: #1d1f20;
   --bg: #ffffff;
@@ -36,6 +41,10 @@
     --warn-border: #d29922;
     --danger-bg: #25171c;
     --danger-border: #f85149;
+    /* Same deep blue for the bar; the button inverts instead, since a light
+       fill with dark text reads better against a dark page. */
+    --chrome: #1f4a9e;
+    --chrome-text: #ffffff;
   }
 }
 
@@ -74,7 +83,7 @@ body {
   align-items: center;
   gap: 1rem;
   padding: .6rem 1.5rem;
-  background: var(--blue);
+  background: var(--chrome);
   border-bottom: 1px solid rgba(0, 0, 0, .15);
 }
 
@@ -138,7 +147,8 @@ body {
 }
 .sidebar a:hover { background: var(--bg-soft); }
 .sidebar a[aria-current="page"] {
-  color: var(--blue);
+  /* --blue on --bg-soft is 4.47:1, a hair under AA; the darker tone clears it. */
+  color: var(--blue-dark);
   font-weight: 600;
   border-left-color: var(--blue);
   background: var(--bg-soft);
@@ -257,8 +267,13 @@ td code { white-space: nowrap; }
   font-size: .95rem;
   border: 1px solid var(--blue);
 }
-.btn-primary { background: var(--blue); color: #fff; }
-.btn-primary:hover { background: var(--blue-dark); color: #fff; }
+.btn-primary { background: var(--chrome); color: var(--chrome-text); border-color: var(--chrome); }
+.btn-primary:hover { filter: brightness(1.12); color: var(--chrome-text); }
+
+@media (prefers-color-scheme: dark) {
+  /* Invert on dark: a light fill with dark text reads better than white on blue. */
+  .btn-primary { background: var(--blue); color: #0d1117; border-color: var(--blue); }
+}
 .btn-ghost { color: var(--blue); }
 .btn-ghost:hover { background: var(--bg-soft); }
 
