@@ -1,0 +1,43 @@
+name: pages
+
+# Publishes doc/ to GitHub Pages. The branch-based Pages source only serves
+# `/` or `/docs`, so this folder is deployed by workflow instead.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'doc/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let a running deploy finish rather than cancelling it mid-publish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Keep the brand assets in sync with media/
+        run: cp media/microk8s-mcp-mark.svg media/microk8s-mcp-lockup-reverse.svg doc/assets/
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: doc
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

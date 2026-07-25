@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Configuration reference — microk8s-mcp environment variables</title>
+<meta name="description" content="Every microk8s-mcp environment variable with its default and effect: MICROK8S_MCP_MODE, KUBECONFIG, KUBECTL, SSH_HOST, NAMESPACES, ALLOW_ADDON_CHANGES, ALLOW_NODE_OPS and more, plus the make register switches.">
+<link rel="canonical" href="https://pierrejochem.github.io/microk8s-mcp/configure.html">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="microk8s-mcp">
+<meta property="og:title" content="Configuration reference — microk8s-mcp environment variables">
+<meta property="og:description" content="Every environment variable with its default and effect, plus the make register switches.">
+<meta property="og:url" content="https://pierrejochem.github.io/microk8s-mcp/configure.html">
+<meta property="og:image" content="https://pierrejochem.github.io/microk8s-mcp/assets/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://pierrejochem.github.io/microk8s-mcp/assets/og-image.png">
+<link rel="icon" href="assets/microk8s-mcp-mark.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <a class="brand" href="index.html">
+    <svg viewBox="18 18 65 76" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+      <path d="M24 24 24 88M24 62 24 70 52 70 52 24" fill="none" stroke="#ffffff" stroke-width="8" stroke-linejoin="miter" stroke-linecap="butt"></path>
+      <g fill="none" stroke="rgba(255,255,255,.75)" stroke-width="2.6"><rect x="64" y="30" width="16" height="16"></rect><rect x="64" y="50" width="16" height="16"></rect></g>
+      <rect x="68" y="54" width="8" height="8" fill="#e95420"></rect>
+    </svg>
+    microk8s-mcp
+  </a>
+  <span class="spacer"></span>
+  <a class="gh" href="https://github.com/pierrejochem/microk8s-mcp">View on GitHub</a>
+</header>
+
+<div class="layout">
+  <div class="sidebar">
+    <nav aria-label="Documentation">
+      <h2>Documentation</h2>
+      <ul>
+        <li><a href="index.html">Overview</a></li>
+        <li><a href="install.html">Installation</a></li>
+        <li><a href="configure.html" aria-current="page">Configuration</a></li>
+        <li><a href="tools.html">Tool reference</a></li>
+        <li><a href="security.html">Security model</a></li>
+        <li><a href="troubleshooting.html">Troubleshooting</a></li>
+      </ul>
+      <h2>On this page</h2>
+      <ul>
+        <li><a href="#how">How to set them</a></li>
+        <li><a href="#core">Core settings</a></li>
+        <li><a href="#backend">Backend settings</a></li>
+        <li><a href="#policy">Policy switches</a></li>
+        <li><a href="#limits">Limits and logging</a></li>
+        <li><a href="#register-flags">make register switches</a></li>
+        <li><a href="#recipes">Common setups</a></li>
+      </ul>
+    </nav>
+  </div>
+
+  <main id="main">
+    <h1>Configuration</h1>
+    <p class="lede">Everything is environment variables, passed at registration time. There is no
+    config file, and nothing is read from your shell — Claude Code launches the server with its
+    own environment.</p>
+
+    <h2 id="how">How to set them</h2>
+    <p>Pass each one with <code>--env</code> when registering:</p>
+    <pre><code>claude mcp add --transport stdio microk8s \
+  --env MICROK8S_MCP_KUBECONFIG=/home/you/.kube/claude-mcp.kubeconfig \
+  --env MICROK8S_MCP_SSH_HOST=you@your-node \
+  --env MICROK8S_MCP_MODE=read-write \
+  --env MICROK8S_MCP_NAMESPACES=apps,staging \
+  -- /home/you/microk8s-mcp/.venv/bin/microk8s-mcp</code></pre>
+
+    <p>The <code>make register</code> and <code>make register-rw</code> targets set the common ones
+    for you with absolute paths filled in. To see what is actually registered at any point:</p>
+    <pre><code>claude mcp get microk8s</code></pre>
+
+    <div class="note">
+      <p>Boolean variables accept <code>1</code>, <code>true</code>, <code>yes</code> or
+      <code>on</code> (case-insensitive). Anything else is false.</p>
+    </div>
+
+    <h2 id="core">Core settings</h2>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Variable</th><th>Default</th><th>Effect</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>MICROK8S_MCP_MODE</code></td>
+          <td><code>read-only</code></td>
+          <td>Set <code>read-write</code> (or <code>rw</code>) to unlock the mutating tools. Anything else keeps the server read-only.</td>
+        </tr>
+        <tr>
+          <td><code>MICROK8S_MCP_KUBECONFIG</code></td>
+          <td><em>kubectl default</em></td>
+          <td>Path to the scoped kubeconfig. Leave unset to use whatever kubectl would use on its own.</td>
+        </tr>
+        <tr>
+          <td><code>MICROK8S_MCP_CONTEXT</code></td>
+          <td><em>current</em></td>
+          <td>kubeconfig context to select, if the file holds more than one.</td>
+        </tr>
+        <tr>
+          <td><code>MICROK8S_MCP_KUBECTL</code></td>
+          <td><code>kubectl</code></td>
+          <td>Path to the kubectl binary. <strong>Set this to an absolute path</strong> — see the warning below.</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+
+    <div class="warn">
+      <p><strong><code>MICROK8S_MCP_KUBECTL</code> is worth setting explicitly.</strong> If the
+      server cannot find kubectl it falls back to <code>microk8s kubectl</code> on the node, which
+      runs under the node's <em>admin</em> credential — the scoped kubeconfig and the RBAC role
+      stop applying. A kubectl in <code>~/.local/bin</code> is on your PATH but not necessarily on
+      the PATH Claude Code hands the server, so relying on PATH is exactly how you end up escalated
+      without noticing. <code>make register</code> bakes in the absolute path for you.</p>
+    </div>
+
+    <h2 id="backend">Node backend settings</h2>
+    <p>These control how the server reaches the <code>microk8s</code> command itself, for addon
+    management and snap-level status. Under topology B (server on the node) you can leave all of
+    them unset.</p>
+
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Variable</th><th>Default</th><th>Effect</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>MICROK8S_MCP_SSH_HOST</code></td>
+          <td><em>unset</em></td>
+          <td><code>user@host</code> for the node backend. Unset means the node backend runs locally.</td>
+        </tr>
+        <tr>
+          <td><code>MICROK8S_MCP_SSH_KEY</code></td>
+          <td><em>agent/default</em></td>
+          <td>Identity file for SSH, if you are not using an agent.</td>
+        </tr>
+        <tr>
+          <td><code>MICROK8S_MCP_SSH</code></td>
+          <td><code>ssh</code></td>
+          <td>The ssh binary to use.</td>
+        </tr>
+        <tr>
+          <td><code>MICROK8S_MCP_MICROK8S</code></td>
+          <td><code>microk8s</code></td>
+          <td>Path to the microk8s binary on the node. Set <code>/snap/bin/microk8s</code> if a non-interactive SSH shell cannot find it.</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+
+    <p>SSH always runs with <code>BatchMode=yes</code> and
+    <code>StrictHostKeyChecking=accept-new</code>, so key-based auth is required — the server
+    never prompts for a password.</p>
+
+    <h2 id="policy">Policy switches</h2>
+    <p>These are what the server is <em>willing</em> to do. They are enforced by this process, not
+    by the API server — read <a href="security.html#layers">the two layers</a> before relying on them.</p>
+
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Variable</th><th>Default</th><th>Effect</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>MICROK8S_MCP_NAMESPACES</code></td>
+          <td><code>*</code></td>
+          <td>Comma-separated namespace allowlist. Any tool call naming a namespace outside it is refused.</td>
+        </tr>
+        <tr>
+          <td><code>MICROK8S_MCP_PROTECTED_NAMESPACES</code></td>
+          <td><code>kube-system,kube-public,<wbr>kube-node-lease,default</code></td>
+          <td>Readable, but writes are blocked unless the next switch is on.</td>
+        </tr>
+        <tr>
+          <td><code>MICROK8S_MCP_ALLOW_PROTECTED_WRITES</code></td>
+          <td><code>false</code></td>
+          <td>Permit writes to the protected namespaces above.</td>
+        </tr>
+        <tr>
+          <td><code>MICROK8S_MCP_ALLOW_ADDON_CHANGES</code></td>
+          <td><code>false</code></td>
+          <td>Permit <code>manage_addon</code> to enable/disable addons. This is snap-level root on the node — RBAC does not constrain it at all.</td>
+        </tr>
+        <tr>
+          <td><code>MICROK8S_MCP_ALLOW_NODE_OPS</code></td>
+          <td><code>false</code></td>
+          <td>Permit <code>node_maintenance</code> to cordon, uncordon or drain. On a single-node cluster a drain evicts everything.</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2 id="limits">Limits and logging</h2>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Variable</th><th>Default</th><th>Effect</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>MICROK8S_MCP_TIMEOUT</code></td>
+          <td><code>60</code></td>
+          <td>Per-command timeout in seconds. Addon and node operations raise this internally.</td>
+        </tr>
+        <tr>
+          <td><code>MICROK8S_MCP_MAX_OUTPUT</code></td>
+          <td><code>24000</code></td>
+          <td>Output longer than this is clipped in the middle, keeping both ends.</td>
+        </tr>
+        <tr>
+          <td><code>MICROK8S_MCP_LOG_LEVEL</code></td>
+          <td><code>INFO</code></td>
+          <td>Every command executed is logged to stderr. Capture it if you want an audit trail.</td>
+        </tr>
+        <tr>
+          <td><code>MICROK8S_MCP_TRANSPORT</code></td>
+          <td><code>stdio</code></td>
+          <td>MCP transport. Leave it alone unless you know you need something else.</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2 id="register-flags">make register switches</h2>
+    <p><code>make register-rw</code> takes four switches and prints the resulting grant before
+    it acts:</p>
+
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Variable</th><th>Default</th><th>Effect</th></tr></thead>
+      <tbody>
+        <tr><td><code>RW_SERVER_NAME</code></td><td><code>microk8s-rw</code></td><td>Pass <code>microk8s</code> to replace the read-only entry instead of running both.</td></tr>
+        <tr><td><code>ALLOW_ADDON_CHANGES</code></td><td><code>true</code></td><td>Lets <code>manage_addon</code> run <code>microk8s enable/disable</code> over SSH.</td></tr>
+        <tr><td><code>ALLOW_NODE_OPS</code></td><td><code>false</code></td><td>Enables <code>node_maintenance</code> (cordon/uncordon/drain).</td></tr>
+        <tr><td><code>ALLOW_PROTECTED_WRITES</code></td><td><code>false</code></td><td>Permits writes to the protected namespaces.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <p>Both register targets also accept:</p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Variable</th><th>Effect</th></tr></thead>
+      <tbody>
+        <tr><td><code>SERVER_NAME</code></td><td>Name to register under (default <code>microk8s</code>).</td></tr>
+        <tr><td><code>KUBECONFIG_PATH</code></td><td>Path to the scoped kubeconfig.</td></tr>
+        <tr><td><code>SSH_HOST</code></td><td><code>user@host</code> for the node backend; omit under topology B.</td></tr>
+        <tr><td><code>SSH_KEY</code></td><td>Identity file, if not using an agent.</td></tr>
+        <tr><td><code>NAMESPACES</code></td><td>Comma-separated namespace allowlist.</td></tr>
+        <tr><td><code>SCOPE</code></td><td>Pass <code>SCOPE=user</code> to register for every project.</td></tr>
+        <tr><td><code>KUBECTL_BIN</code></td><td>Local kubectl to bake in; defaults to <code>command -v kubectl</code>.</td></tr>
+        <tr><td><code>VENV</code></td><td>Which virtualenv to register the entry point from.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2 id="recipes">Common setups</h2>
+
+    <h3>Read-only, everything visible</h3>
+    <p>Where you should start. No policy switches needed — read-only is the default.</p>
+    <pre><code>make register SSH_HOST=you@your-node</code></pre>
+
+    <h3>Write access, two namespaces, nothing else</h3>
+    <p>Writes are limited to <code>apps</code> and <code>staging</code>; protected namespaces,
+    node operations and addon changes all stay off.</p>
+    <pre><code>make register-rw SSH_HOST=you@your-node NAMESPACES=apps,staging \
+  ALLOW_ADDON_CHANGES=false</code></pre>
+
+    <h3>Full homelab control</h3>
+    <p>Everything unlocked. Reasonable on a cluster you can rebuild in ten minutes; unreasonable
+    anywhere else.</p>
+    <pre><code>make register-rw SSH_HOST=you@your-node \
+  ALLOW_NODE_OPS=true ALLOW_PROTECTED_WRITES=true</code></pre>
+
+    <h3>Two servers side by side</h3>
+    <p>A read-only entry pointed at everything, plus a write-enabled entry scoped to what you
+    actually deploy to. Ask the read-only one your questions and the other one for changes.</p>
+    <pre><code>make register    SSH_HOST=you@your-node
+make register-rw SSH_HOST=you@your-node NAMESPACES=apps</code></pre>
+  </main>
+</div>
+
+<footer>
+  <p>microk8s-mcp is free software under the
+  <a href="https://github.com/pierrejochem/microk8s-mcp/blob/main/LICENSE">MIT licence</a> —
+  <a href="https://github.com/pierrejochem/microk8s-mcp">source on GitHub</a>.</p>
+  <p>Not affiliated with Canonical or the Kubernetes project.</p>
+</footer>
+
+</body>
+</html>

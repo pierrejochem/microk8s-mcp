@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Troubleshooting microk8s-mcp — common errors and fixes</title>
+<meta name="description" content="Fixes for the errors people actually hit with microk8s-mcp: server shows disconnected in claude mcp list, connection refused on 16443, x509 certificate is valid for, microk8s command not found over SSH, metrics-server errors from top, and bad interpreter after moving the repo.">
+<link rel="canonical" href="https://pierrejochem.github.io/microk8s-mcp/troubleshooting.html">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="microk8s-mcp">
+<meta property="og:title" content="Troubleshooting microk8s-mcp — common errors and fixes">
+<meta property="og:description" content="The errors people actually hit, what each one means, and how to fix it.">
+<meta property="og:url" content="https://pierrejochem.github.io/microk8s-mcp/troubleshooting.html">
+<meta property="og:image" content="https://pierrejochem.github.io/microk8s-mcp/assets/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://pierrejochem.github.io/microk8s-mcp/assets/og-image.png">
+<link rel="icon" href="assets/microk8s-mcp-mark.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "The server shows disconnected in claude mcp list",
+      "acceptedAnswer": { "@type": "Answer", "text": "Claude Code launches subprocesses with a different environment than your shell, so the command must be an absolute path to the venv binary. make register always uses an absolute path; if you registered by hand, check it. Confirm the binary works standalone with make check." }
+    },
+    {
+      "@type": "Question",
+      "name": "The server does not appear in claude mcp list at all",
+      "acceptedAnswer": { "@type": "Answer", "text": "Either scope or restart. Without SCOPE=user the entry is local, stored per-project and only visible when your working directory is inside that project. Run claude mcp get microk8s to see where it landed. Claude Code also loads MCP servers at session start, so a server registered mid-session will not appear until you restart." }
+    },
+    {
+      "@type": "Question",
+      "name": "connection refused on port 16443",
+      "acceptedAnswer": { "@type": "Answer", "text": "MicroK8s only binds the API server to addresses in its certificate SANs. If you connect by hostname or a non-primary IP, add it to /var/snap/microk8s/current/certs/csr.conf.template on the node and run microk8s refresh-certs --cert server.crt." }
+    },
+    {
+      "@type": "Question",
+      "name": "x509: certificate is valid for ..., not this host",
+      "acceptedAnswer": { "@type": "Answer", "text": "The address in the kubeconfig is reachable but not listed in the API server's subject alternative names. Either re-mint the kubeconfig against an address that is listed, or add yours to csr.conf.template and run microk8s refresh-certs --cert server.crt." }
+    },
+    {
+      "@type": "Question",
+      "name": "microk8s: command not found over SSH",
+      "acceptedAnswer": { "@type": "Answer", "text": "SSH command execution does not source your login profile, so /snap/bin is often missing from PATH. Register the server with --env MICROK8S_MCP_MICROK8S=/snap/bin/microk8s. For the setup targets, pass KUBECTL='/snap/bin/microk8s kubectl' instead." }
+    },
+    {
+      "@type": "Question",
+      "name": "metrics-server errors from the top tool",
+      "acceptedAnswer": { "@type": "Answer", "text": "The metrics-server addon is not enabled. Run microk8s enable metrics-server on the node, then wait a minute for the first metrics to be scraped." }
+    },
+    {
+      "@type": "Question",
+      "name": "bad interpreter after moving or renaming the repository",
+      "acceptedAnswer": { "@type": "Answer", "text": "Virtualenvs are not relocatable. Scripts in venv/bin hardcode the absolute path of the interpreter that created them, and an editable install records the absolute path of the checkout. Rebuild with make distclean install. An out-of-repo copy install (EDITABLE=0) is immune to repo renames." }
+    },
+    {
+      "@type": "Question",
+      "name": "Secret mcp-system/claude-mcp-token not found",
+      "acceptedAnswer": { "@type": "Answer", "text": "The RBAC step did not run, or ran against a different cluster. Re-run make node-rbac SSH_HOST=... and then make node-kubeconfig SSH_HOST=..." }
+    },
+    {
+      "@type": "Question",
+      "name": "The host does not resolve on this machine",
+      "acceptedAnswer": { "@type": "Answer", "text": "The API server address is not usable from your workstation. Almost always an ~/.ssh/config alias that ssh -G could not expand, or a name only the node knows. Pass the real address with APISERVER=https://ip-or-dns:16443. Nothing was minted; this check fires before any cluster contact." }
+    },
+    {
+      "@type": "Question",
+      "name": "The agent refuses to make a change and says the server is read-only",
+      "acceptedAnswer": { "@type": "Answer", "text": "That is the default and it is working correctly. Register a read-write entry with make register-rw SSH_HOST=... NAMESPACES=... and restart Claude Code. If it still refuses, the namespace is outside MICROK8S_MCP_NAMESPACES, or it is a protected namespace and MICROK8S_MCP_ALLOW_PROTECTED_WRITES is false." }
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <a class="brand" href="index.html">
+    <svg viewBox="18 18 65 76" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+      <path d="M24 24 24 88M24 62 24 70 52 70 52 24" fill="none" stroke="#ffffff" stroke-width="8" stroke-linejoin="miter" stroke-linecap="butt"></path>
+      <g fill="none" stroke="rgba(255,255,255,.75)" stroke-width="2.6"><rect x="64" y="30" width="16" height="16"></rect><rect x="64" y="50" width="16" height="16"></rect></g>
+      <rect x="68" y="54" width="8" height="8" fill="#e95420"></rect>
+    </svg>
+    microk8s-mcp
+  </a>
+  <span class="spacer"></span>
+  <a class="gh" href="https://github.com/pierrejochem/microk8s-mcp">View on GitHub</a>
+</header>
+
+<div class="layout">
+  <div class="sidebar">
+    <nav aria-label="Documentation">
+      <h2>Documentation</h2>
+      <ul>
+        <li><a href="index.html">Overview</a></li>
+        <li><a href="install.html">Installation</a></li>
+        <li><a href="configure.html">Configuration</a></li>
+        <li><a href="tools.html">Tool reference</a></li>
+        <li><a href="security.html">Security model</a></li>
+        <li><a href="troubleshooting.html" aria-current="page">Troubleshooting</a></li>
+      </ul>
+      <h2>On this page</h2>
+      <ul>
+        <li><a href="#registration">Registration</a></li>
+        <li><a href="#connection">Connecting to the cluster</a></li>
+        <li><a href="#node">The node backend</a></li>
+        <li><a href="#install-issues">Install and upgrade</a></li>
+        <li><a href="#behaviour">Unexpected behaviour</a></li>
+      </ul>
+    </nav>
+  </div>
+
+  <main id="main">
+    <h1>Troubleshooting</h1>
+    <p class="lede">The errors people actually hit, what each one really means, and the fix.
+    Start with <code>make doctor</code> — it checks most of the preconditions in one go and
+    installs nothing.</p>
+
+    <h2 id="registration">Registration</h2>
+
+    <h3>Server shows <code>disconnected</code> in <code>claude mcp list</code></h3>
+    <p>Claude Code launches subprocesses with a different environment than your shell. The command
+    must be an <strong>absolute</strong> path to the venv binary. <code>make register</code> always
+    uses one; if you registered by hand, check it. Confirm the binary works on its own:</p>
+    <pre><code>make check</code></pre>
+
+    <h3>The server does not appear at all</h3>
+    <p>Two causes, both of which make a healthy registration look like a missing one.</p>
+    <p><strong>Scope.</strong> Without <code>SCOPE=user</code> the entry is local — stored
+    per-project, visible only when your working directory is inside that project. Nothing is wrong;
+    you are just looking from the wrong place:</p>
+    <pre><code>claude mcp get microk8s</code></pre>
+
+    <p><strong>Restart.</strong> Claude Code loads MCP servers at session start. A server
+    registered during a running session will not appear in <code>/mcp</code> until you restart,
+    whatever its scope.</p>
+
+    <h3>Every tool appears twice</h3>
+    <p>You have both a <code>microk8s</code> and a <code>microk8s-rw</code> entry registered. That
+    is a supported setup, but if you would rather have one, re-register with
+    <code>RW_SERVER_NAME=microk8s</code> to replace the read-only entry instead of adding to it.</p>
+
+    <h2 id="connection">Connecting to the cluster</h2>
+
+    <h3><code>connection refused</code> on :16443</h3>
+    <p>MicroK8s only binds the API server to addresses in its certificate SANs. If you are
+    connecting by hostname or a non-primary IP, add it on the node and refresh the certificates:</p>
+    <pre><code># on the node
+sudo nano /var/snap/microk8s/current/certs/csr.conf.template
+microk8s refresh-certs --cert server.crt</code></pre>
+
+    <h3><code>x509: certificate is valid for ..., not &lt;host&gt;</code></h3>
+    <p>The address in the kubeconfig is reachable, but it is not one the certificate covers. See
+    which names are present:</p>
+    <pre><code>ssh you@your-node 'openssl x509 -in \
+  /var/snap/microk8s/current/certs/server.crt -noout -text' | grep -A3 "Alternative Name"</code></pre>
+    <p>Then either re-mint against an address that is listed, or add yours to
+    <code>csr.conf.template</code> and refresh as above.</p>
+
+    <h3><code>'&lt;host&gt;' does not resolve on this machine</code></h3>
+    <p>From <code>make node-check</code>. The API server address is not usable from here — almost
+    always an <code>~/.ssh/config</code> alias that <code>ssh -G</code> could not expand, or a name
+    only the node knows. Pass the real one:</p>
+    <pre><code>make node-setup SSH_HOST=&lt;alias&gt; APISERVER=https://&lt;ip-or-dns&gt;:16443</code></pre>
+    <p>Nothing was minted; this check fires before any cluster contact.</p>
+
+    <h3><code>cannot reach &lt;host&gt; over ssh</code></h3>
+    <p>Check <code>ssh you@your-node true</code> works on its own first. If you need a key or a
+    jump host:</p>
+    <pre><code>make node-check SSH_HOST=you@your-node SSH_KEY=~/.ssh/id_ed25519
+make node-check SSH_HOST=you@your-node SSH_OPTS='-J bastion -o ConnectTimeout=10'</code></pre>
+    <p>The <code>node-*</code> targets do not force <code>BatchMode</code>, so password and
+    passphrase prompts still work. The <em>running server</em> does force it — it never prompts —
+    so key-based auth is required at runtime.</p>
+
+    <h3><code>Secret mcp-system/claude-mcp-token not found</code></h3>
+    <p>The RBAC step did not run, or ran against a different cluster:</p>
+    <pre><code>make node-rbac       SSH_HOST=you@your-node
+make node-kubeconfig SSH_HOST=you@your-node</code></pre>
+
+    <h3><code>Remote script failed; ... left untouched</code></h3>
+    <p>Nothing was damaged — <code>node-kubeconfig</code> validates the minted kubeconfig before it
+    replaces anything. Run <code>make node-check SSH_HOST=...</code> to find the missing
+    precondition.</p>
+
+    <h2 id="node">The node backend</h2>
+
+    <h3><code>microk8s: command not found</code> over SSH</h3>
+    <p>SSH command execution does not source your login profile, so <code>/snap/bin</code> is often
+    missing from PATH. There are two separate settings, for two separate stages:</p>
+    <pre><code># at runtime, for the server
+--env MICROK8S_MCP_MICROK8S=/snap/bin/microk8s
+
+# during setup, for the make targets
+make node-setup SSH_HOST=you@your-node KUBECTL='/snap/bin/microk8s kubectl'</code></pre>
+
+    <h3><code>No node backend available</code></h3>
+    <p>A tool that needs the node backend — <code>microk8s_status</code> or
+    <code>manage_addon</code> — was called with no way to reach it. Either run the server on the
+    MicroK8s host, or set <code>MICROK8S_MCP_SSH_HOST=user@host</code> with key-based auth.</p>
+
+    <h3><code>metrics-server</code> errors from <code>top</code></h3>
+    <p>Enable the addon on the node, then give it a minute to scrape:</p>
+    <pre><code>microk8s enable metrics-server</code></pre>
+
+    <h2 id="install-issues">Install and upgrade</h2>
+
+    <h3><code>No module named microk8s_mcp</code></h3>
+    <p>The venv is stale or the install did not complete:</p>
+    <pre><code>make distclean install</code></pre>
+
+    <h3><code>bad interpreter</code> after moving or renaming the repo</h3>
+    <p>Virtualenvs are not relocatable. Scripts in <code>&lt;venv&gt;/bin</code> hardcode the
+    absolute path of the interpreter that created them, and an editable install records the
+    absolute path of the checkout. Renaming breaks both, and <code>make install</code> cannot
+    repair it because pip itself is one of those scripts:</p>
+    <pre><code>make distclean install</code></pre>
+    <p>An out-of-repo copy install is immune to repo renames — that is the point of it. Moving the
+    venv itself has the same problem, so reinstall rather than <code>mv</code> a venv.</p>
+
+    <h3>Code changes have no effect</h3>
+    <p>The classic copy-install trap: with <code>EDITABLE=0</code> the venv holds its own copy, so
+    a <code>git pull</code> changes nothing until you reinstall. Everything reports success and the
+    old code keeps running. Ask the venv where it imports from — from <em>outside</em> the
+    checkout, since <code>python -c</code> prepends the working directory to <code>sys.path</code>
+    and would otherwise answer with the local source:</p>
+    <pre><code>cd /tmp &amp;&amp; ~/.local/share/microk8s-mcp/venv/bin/python -c \
+  "import microk8s_mcp, inspect; print(inspect.getfile(microk8s_mcp))"</code></pre>
+    <p>A path under <code>site-packages</code> is a copy install; a path inside the repo means it
+    is editable after all.</p>
+
+    <h3><code>Permission denied</code> writing the kubeconfig</h3>
+    <p><code>KUBECONFIG_OUT</code> points somewhere you cannot write:</p>
+    <pre><code>make kubeconfig APISERVER=... KUBECONFIG_OUT=/tmp/claude-mcp.kubeconfig</code></pre>
+
+    <h2 id="behaviour">Unexpected behaviour</h2>
+
+    <h3>It refuses to change anything</h3>
+    <p>Read-only is the default, and the refusal message says so. Register a read-write entry:</p>
+    <pre><code>make register-rw SSH_HOST=you@your-node NAMESPACES=apps,staging</code></pre>
+    <p>Then restart Claude Code. If it still refuses, work through these in order: the namespace is
+    outside <code>MICROK8S_MCP_NAMESPACES</code>; or it is a protected namespace and
+    <code>MICROK8S_MCP_ALLOW_PROTECTED_WRITES</code> is false; or the tool needs its own switch
+    (<code>ALLOW_ADDON_CHANGES</code>, <code>ALLOW_NODE_OPS</code>); or the RBAC binding does not
+    grant it — check with <code>auth can-i</code>.</p>
+
+    <h3>It can do more than you expected</h3>
+    <p>Almost always the <a href="security.html#kubectl-fallback">kubectl fallback</a>: with no
+    local <code>kubectl</code>, commands run under the node's admin credential and your scoped
+    kubeconfig stops applying. Check the logs for
+    <code>falling back to `microk8s kubectl`</code>, and set
+    <code>MICROK8S_MCP_KUBECTL</code> to an absolute path.</p>
+    <p>Then confirm what the credential can really do:</p>
+    <pre><code>kubectl --kubeconfig ~/.kube/claude-mcp.kubeconfig auth can-i --list</code></pre>
+
+    <h3>Output is truncated</h3>
+    <p>Anything over <code>MICROK8S_MCP_MAX_OUTPUT</code> characters (24000 by default) is clipped
+    in the middle, with a note saying how much was dropped. Narrow the query — a label selector, a
+    single namespace, fewer <code>tail_lines</code> — rather than raising the limit, since the
+    output has to fit in a context window either way.</p>
+
+    <h3>Commands time out</h3>
+    <p><code>MICROK8S_MCP_TIMEOUT</code> is 60 seconds per command. Addon operations and node
+    drains raise it internally, but a slow cluster or a slow SSH hop can still hit it. Raise it if
+    the timeout is legitimate rather than a symptom.</p>
+
+    <div class="note">
+      <p>Still stuck? Open an issue on
+      <a href="https://github.com/pierrejochem/microk8s-mcp/issues">GitHub</a> with the startup log
+      line — it records the mode, kubeconfig, backend and namespace allowlist the server is
+      actually running with.</p>
+    </div>
+  </main>
+</div>
+
+<footer>
+  <p>microk8s-mcp is free software under the
+  <a href="https://github.com/pierrejochem/microk8s-mcp/blob/main/LICENSE">MIT licence</a> —
+  <a href="https://github.com/pierrejochem/microk8s-mcp">source on GitHub</a>.</p>
+  <p>Not affiliated with Canonical or the Kubernetes project.</p>
+</footer>
+
+</body>
+</html>

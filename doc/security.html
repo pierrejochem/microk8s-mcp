@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security model — RBAC scoping for microk8s-mcp</title>
+<meta name="description" content="How microk8s-mcp limits what an AI agent can do to your Kubernetes cluster: the claude-mcp ServiceAccount, the reader and operator ClusterRoles, why RBAC is the only real boundary, and how to audit what your credential can actually do.">
+<link rel="canonical" href="https://pierrejochem.github.io/microk8s-mcp/security.html">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="microk8s-mcp">
+<meta property="og:title" content="Security model — RBAC scoping for microk8s-mcp">
+<meta property="og:description" content="The two enforcement layers, which one actually binds, and how to audit what your credential can really do.">
+<meta property="og:url" content="https://pierrejochem.github.io/microk8s-mcp/security.html">
+<meta property="og:image" content="https://pierrejochem.github.io/microk8s-mcp/assets/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://pierrejochem.github.io/microk8s-mcp/assets/og-image.png">
+<link rel="icon" href="assets/microk8s-mcp-mark.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <a class="brand" href="index.html">
+    <svg viewBox="18 18 65 76" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+      <path d="M24 24 24 88M24 62 24 70 52 70 52 24" fill="none" stroke="#ffffff" stroke-width="8" stroke-linejoin="miter" stroke-linecap="butt"></path>
+      <g fill="none" stroke="rgba(255,255,255,.75)" stroke-width="2.6"><rect x="64" y="30" width="16" height="16"></rect><rect x="64" y="50" width="16" height="16"></rect></g>
+      <rect x="68" y="54" width="8" height="8" fill="#e95420"></rect>
+    </svg>
+    microk8s-mcp
+  </a>
+  <span class="spacer"></span>
+  <a class="gh" href="https://github.com/pierrejochem/microk8s-mcp">View on GitHub</a>
+</header>
+
+<div class="layout">
+  <div class="sidebar">
+    <nav aria-label="Documentation">
+      <h2>Documentation</h2>
+      <ul>
+        <li><a href="index.html">Overview</a></li>
+        <li><a href="install.html">Installation</a></li>
+        <li><a href="configure.html">Configuration</a></li>
+        <li><a href="tools.html">Tool reference</a></li>
+        <li><a href="security.html" aria-current="page">Security model</a></li>
+        <li><a href="troubleshooting.html">Troubleshooting</a></li>
+      </ul>
+      <h2>On this page</h2>
+      <ul>
+        <li><a href="#layers">The two layers</a></li>
+        <li><a href="#rbac">What rbac.yaml grants</a></li>
+        <li><a href="#narrowing">Narrowing the grant</a></li>
+        <li><a href="#audit">Auditing what you have</a></li>
+        <li><a href="#omitted">What is deliberately missing</a></li>
+        <li><a href="#kubectl-fallback">The kubectl fallback</a></li>
+        <li><a href="#logging">Audit logging</a></li>
+      </ul>
+    </nav>
+  </div>
+
+  <main id="main">
+    <h1>Security model</h1>
+    <p class="lede">Giving a language model a path into your cluster is a real decision. This page
+    is about what that path is bounded by — and, just as importantly, what it is <em>not</em>
+    bounded by.</p>
+
+    <h2 id="layers">The two layers, and only one is a boundary</h2>
+    <p>Two independent things decide what can happen to your cluster:</p>
+
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Layer</th><th>Configured by</th><th>Enforced by</th><th>Is it a boundary?</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>RBAC</strong> — what the credential is <em>able</em> to do</td>
+          <td><code>rbac.yaml</code></td>
+          <td>The Kubernetes API server</td>
+          <td><strong>Yes.</strong> Real, and enforced no matter who holds the token.</td>
+        </tr>
+        <tr>
+          <td><strong>Env vars</strong> — what this server is <em>willing</em> to do</td>
+          <td><code>MICROK8S_MCP_*</code></td>
+          <td>This Python process</td>
+          <td><strong>No.</strong> A convenience. Anything else holding the token ignores it.</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+
+    <p>The asymmetry matters, and it only runs one way. A narrow RBAC binding makes a permissive
+    env var harmless: if the token is bound only to the reader role, then
+    <code>MICROK8S_MCP_MODE=read-write</code> still cannot hurt you, because the API server refuses.</p>
+
+    <p>The reverse is not true. <code>MICROK8S_MCP_NAMESPACES=apps</code> against a cluster-wide
+    ClusterRoleBinding still leaves a token that can write anywhere — this server simply declines
+    to be the one doing it. Anything else that reads the kubeconfig has no such scruples.</p>
+
+    <div class="note"><p><strong>Set both layers.</strong> Use the env vars to keep the agent
+    focused, and RBAC to make the boundary true.</p></div>
+
+    <h2 id="rbac">What rbac.yaml grants</h2>
+    <p>Applying it creates the <code>mcp-system</code> namespace, a <code>claude-mcp</code>
+    ServiceAccount, a long-lived token Secret, and two ClusterRoles:</p>
+
+    <h3><code>claude-mcp-reader</code> — always bound</h3>
+    <p>get/list/watch across the cluster, <strong>except Secrets</strong>. That exclusion is
+    deliberate and it is the point: your database passwords, TLS keys and API tokens live in
+    Secrets, and nothing that can read them should be feeding a model context window.</p>
+
+    <h3><code>claude-mcp-operator</code> — bound as shipped</h3>
+    <p>create/update/patch/delete on deployments, statefulsets, daemonsets, pods, services,
+    configmaps, PVCs, jobs, cronjobs, ingresses and networkpolicies — plus node patch and pod
+    eviction. Secrets stay excluded here too, and the credential cannot escalate its own permissions.</p>
+
+    <div class="danger">
+      <p><strong>The operator ClusterRoleBinding is active in the repository as shipped.</strong>
+      <code>kubectl apply -f rbac.yaml</code> therefore grants cluster-wide write, in
+      <em>every</em> namespace. That is a defensible default for a homelab you can rebuild in ten
+      minutes, and the wrong one for anything else. Decide before you apply.</p>
+    </div>
+
+    <h2 id="narrowing">Three ways to shape the grant</h2>
+    <p>In descending order of how much they actually protect you:</p>
+
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Approach</th><th>Enforced by</th><th>Effect</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Comment out the <code>claude-mcp-operator</code> binding</td>
+          <td>API server</td>
+          <td>No writes at all</td>
+        </tr>
+        <tr>
+          <td>Replace it with per-namespace <code>RoleBinding</code>s</td>
+          <td>API server</td>
+          <td>Writes only in the namespaces you name</td>
+        </tr>
+        <tr>
+          <td><code>MICROK8S_MCP_NAMESPACES=apps,staging</code></td>
+          <td>This server</td>
+          <td>Server declines elsewhere; the credential could still do it</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+
+    <p>To narrow rather than remove, swap the ClusterRoleBinding for a RoleBinding per namespace —
+    same <code>roleRef</code> and <code>subjects</code>, plus a namespace:</p>
+
+    <pre><code>kind: RoleBinding
+metadata:
+  name: claude-mcp-operator
+  namespace: apps          # one per namespace you want writable</code></pre>
+
+    <div class="warn">
+      <p><strong>Removing a binding needs more than an edit.</strong> <code>kubectl apply</code>
+      will not delete a binding you merely deleted from the YAML. If you already applied it and
+      want it gone now:</p>
+      <pre><code>kubectl delete clusterrolebinding claude-mcp-operator</code></pre>
+    </div>
+
+    <h2 id="audit">Audit what you actually have</h2>
+    <p>Do not trust either layer's configuration — ask the API server. This is the only answer
+    that counts:</p>
+
+    <pre><code>kubectl --kubeconfig ~/.kube/claude-mcp.kubeconfig auth can-i --list</code></pre>
+
+    <p>Two specific checks worth running after any change:</p>
+
+    <pre><code># Secrets must be unreadable — this is the one that must never come back "yes"
+kubectl --kubeconfig ~/.kube/claude-mcp.kubeconfig auth can-i list secrets -A
+
+# Can it write where you think it cannot?
+kubectl --kubeconfig ~/.kube/claude-mcp.kubeconfig auth can-i delete deployments -n kube-system</code></pre>
+
+    <p>The kubeconfig itself holds a live bearer token. Keep it at mode 600 — the setup targets
+    write it that way — and delete it when you tear the identity down, since the token stays valid
+    until the Secret is gone.</p>
+
+    <h2 id="omitted">What is deliberately missing</h2>
+    <p>Some capabilities are absent by design, not oversight:</p>
+
+    <ul>
+      <li><strong>No <code>kubectl exec</code>, no port-forward, no raw shell.</strong> An exec
+      tool is arbitrary code execution inside your cluster, driven by model output. If you want
+      that, add it yourself and understand what you are accepting.</li>
+      <li><strong>No Secret reads</strong> in the bundled role, as above.</li>
+      <li><strong>No bulk deletes.</strong> <code>delete_resource</code> takes one kind and one
+      name; there is no <code>--all</code> and no selector path, so no single call can cascade.</li>
+      <li><strong>No shell interpolation.</strong> Commands are built as argument lists, never
+      strings. Kinds, names and namespaces are regex-validated, so nothing can be smuggled in as
+      a kubectl flag. Remote SSH commands are <code>shlex.quote</code>d per argument.</li>
+      <li><strong>No privilege escalation.</strong> Neither role grants the verbs that would let
+      the credential widen its own bindings.</li>
+    </ul>
+
+    <h2 id="kubectl-fallback">The kubectl fallback, and why it matters</h2>
+    <p>One path deserves singling out. If the server cannot find a local <code>kubectl</code>, it
+    falls back to running <code>microk8s kubectl</code> on the node — which executes under that
+    node's <strong>admin</strong> credential. On that path the scoped kubeconfig and both roles
+    stop applying, and Secrets become readable again.</p>
+
+    <p>This is a genuine escalation, and it happens quietly. The trigger is mundane: a kubectl in
+    <code>~/.local/bin</code> is on <em>your</em> PATH but not necessarily on the PATH Claude Code
+    hands the server.</p>
+
+    <p>Two defences:</p>
+    <ul>
+      <li>Set <code>MICROK8S_MCP_KUBECTL</code> to an absolute path. <code>make register</code>
+      does this for you.</li>
+      <li>The server logs a warning whenever it takes the fallback. Grep your MCP logs for
+      <code>falling back to `microk8s kubectl`</code>.</li>
+    </ul>
+
+    <h2 id="logging">Audit logging</h2>
+    <p>Every command the server executes is logged to stderr before it runs, with arguments quoted.
+    Capture that stream if you want a trail of everything the agent did:</p>
+
+    <pre><code>--env MICROK8S_MCP_LOG_LEVEL=INFO</code></pre>
+
+    <p>Startup also logs the effective policy — mode, kubeconfig, backend and namespace allowlist —
+    so the first lines of any session tell you what this process believes it is allowed to do.</p>
+
+    <div class="note">
+      <p><strong>Reporting a vulnerability:</strong> please open an issue on
+      <a href="https://github.com/pierrejochem/microk8s-mcp/issues">GitHub</a>. This is a
+      small hobby project, not a vendor product — there is no SLA, and you should read the code
+      before trusting it with anything that matters.</p>
+    </div>
+  </main>
+</div>
+
+<footer>
+  <p>microk8s-mcp is free software under the
+  <a href="https://github.com/pierrejochem/microk8s-mcp/blob/main/LICENSE">MIT licence</a> —
+  <a href="https://github.com/pierrejochem/microk8s-mcp">source on GitHub</a>.</p>
+  <p>Not affiliated with Canonical or the Kubernetes project.</p>
+</footer>
+
+</body>
+</html>

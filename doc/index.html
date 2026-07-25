@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>microk8s-mcp — Manage a MicroK8s cluster from Claude Code</title>
+<meta name="description" content="An open-source MCP server that lets Claude Code inspect and operate a MicroK8s cluster: read logs, triage failures, scale workloads and apply manifests. Read-only by default, with RBAC-scoped credentials.">
+<link rel="canonical" href="https://pierrejochem.github.io/microk8s-mcp/">
+<meta name="author" content="Pierre Jochem">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="microk8s-mcp">
+<meta property="og:title" content="microk8s-mcp — Manage a MicroK8s cluster from Claude Code">
+<meta property="og:description" content="An open-source MCP server that lets Claude Code inspect and operate a MicroK8s cluster. Read-only by default, with RBAC-scoped credentials.">
+<meta property="og:url" content="https://pierrejochem.github.io/microk8s-mcp/">
+<meta property="og:image" content="https://pierrejochem.github.io/microk8s-mcp/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="microk8s-mcp — Manage a MicroK8s cluster from Claude Code">
+<meta name="twitter:description" content="An open-source MCP server that lets Claude Code inspect and operate a MicroK8s cluster. Read-only by default.">
+<meta name="twitter:image" content="https://pierrejochem.github.io/microk8s-mcp/assets/og-image.png">
+<link rel="icon" href="assets/microk8s-mcp-mark.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "microk8s-mcp",
+  "description": "An MCP (Model Context Protocol) server that exposes a MicroK8s Kubernetes cluster to the Claude CLI as typed tools. Read-only by default; every mutating capability sits behind a separate switch.",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Linux",
+  "url": "https://pierrejochem.github.io/microk8s-mcp/",
+  "downloadUrl": "https://github.com/pierrejochem/microk8s-mcp",
+  "codeRepository": "https://github.com/pierrejochem/microk8s-mcp",
+  "programmingLanguage": "Python",
+  "license": "https://opensource.org/licenses/MIT",
+  "softwareRequirements": "Python 3.10+, MicroK8s, kubectl",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "author": { "@type": "Person", "name": "Pierre Jochem" }
+}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <a class="brand" href="index.html">
+    <svg viewBox="18 18 65 76" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+      <path d="M24 24 24 88M24 62 24 70 52 70 52 24" fill="none" stroke="#ffffff" stroke-width="8" stroke-linejoin="miter" stroke-linecap="butt"></path>
+      <g fill="none" stroke="rgba(255,255,255,.75)" stroke-width="2.6"><rect x="64" y="30" width="16" height="16"></rect><rect x="64" y="50" width="16" height="16"></rect></g>
+      <rect x="68" y="54" width="8" height="8" fill="#e95420"></rect>
+    </svg>
+    microk8s-mcp
+  </a>
+  <span class="spacer"></span>
+  <a class="gh" href="https://github.com/pierrejochem/microk8s-mcp">View on GitHub</a>
+</header>
+
+<div class="layout">
+  <div class="sidebar">
+    <nav aria-label="Documentation">
+      <h2>Documentation</h2>
+      <ul>
+        <li><a href="index.html" aria-current="page">Overview</a></li>
+        <li><a href="install.html">Installation</a></li>
+        <li><a href="configure.html">Configuration</a></li>
+        <li><a href="tools.html">Tool reference</a></li>
+        <li><a href="security.html">Security model</a></li>
+        <li><a href="troubleshooting.html">Troubleshooting</a></li>
+      </ul>
+      <h2>On this page</h2>
+      <ul>
+        <li><a href="#what">What it does</a></li>
+        <li><a href="#example">What it looks like</a></li>
+        <li><a href="#quickstart">Quick start</a></li>
+        <li><a href="#topologies">Where it runs</a></li>
+        <li><a href="#safety">How it stays safe</a></li>
+      </ul>
+    </nav>
+  </div>
+
+  <main id="main">
+    <div class="hero">
+      <img src="assets/microk8s-mcp-lockup-reverse.svg" alt="microk8s-mcp — Model Context Protocol server" width="840" height="220">
+      <h1>Run your MicroK8s cluster from a conversation</h1>
+      <p class="lede">microk8s-mcp is an open-source MCP server that gives Claude Code a safe,
+      typed window into your Kubernetes cluster. Ask what is broken and get a real answer,
+      backed by real <code>kubectl</code> calls — without pasting a single credential into a chat.</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="install.html">Install it</a>
+        <a class="btn btn-ghost" href="tools.html">See the 16 tools</a>
+        <a class="btn btn-ghost" href="https://github.com/pierrejochem/microk8s-mcp">Source on GitHub</a>
+      </div>
+    </div>
+
+    <h2 id="what">What it does</h2>
+    <p>MicroK8s is a small, complete Kubernetes distribution that runs happily on one machine.
+    It is a great home for a homelab, a build server, or a staging cluster. What it does not
+    give you is a good way to <em>ask questions</em> about itself — the answers live behind a
+    dozen <code>kubectl</code> invocations that you have to remember and assemble.</p>
+
+    <p>microk8s-mcp closes that gap. It is a
+    <a href="https://modelcontextprotocol.io">Model Context Protocol</a> server: a small program
+    that Claude Code launches and talks to over stdin, exposing your cluster as a set of tools
+    it can call. You ask a question in English; Claude picks the right tools, runs them against
+    your cluster, and reports back with actual output.</p>
+
+    <div class="cards">
+      <div class="card">
+        <h3>Investigate</h3>
+        <p>Node health, pod status, logs, events, resource usage and rollout state — across
+        every namespace, in one question.</p>
+      </div>
+      <div class="card">
+        <h3>Operate</h3>
+        <p>Scale workloads, restart rollouts, apply manifests and manage MicroK8s addons —
+        once you deliberately unlock writes.</p>
+      </div>
+      <div class="card">
+        <h3>Stay in control</h3>
+        <p>Read-only out of the box, a purpose-built ServiceAccount, no Secret access,
+        and no shell. Every command is logged.</p>
+      </div>
+    </div>
+
+    <h2 id="example">What it looks like in practice</h2>
+    <p>Once it is registered, you do not run commands — you ask questions:</p>
+
+    <pre><code>&gt; why is the ingress in the apps namespace throwing 502s?</code></pre>
+
+    <p>Claude calls <code>list_resources</code> to find the ingress and its backing service,
+    <code>describe_resource</code> on the endpoints that turn out to be empty,
+    <code>get_logs</code> on the one pod that is crash-looping, and tells you that the
+    container is exiting on a missing environment variable — with the log lines to prove it.
+    That is four tools and about ten seconds, and you never left the terminal.</p>
+
+    <p>Other things worth asking:</p>
+    <ul>
+      <li><em>"Give me a health report for the cluster."</em> — there is a built-in prompt for this.</li>
+      <li><em>"Which pods have restarted more than five times today?"</em></li>
+      <li><em>"Triage the staging namespace."</em></li>
+      <li><em>"Scale the web deployment to 3 replicas"</em> — if you enabled write mode.</li>
+    </ul>
+
+    <h2 id="quickstart">Quick start</h2>
+    <p>Three commands from your workstation, with MicroK8s running on another machine.
+    Nothing is installed on the node:</p>
+
+    <pre><code>git clone https://github.com/pierrejochem/microk8s-mcp &amp;&amp; cd microk8s-mcp
+make install
+make node-setup SSH_HOST=you@your-node
+make register   SSH_HOST=you@your-node</code></pre>
+
+    <p>Restart Claude Code, run <code>/mcp</code>, and the tools are there. The
+    <a href="install.html">installation guide</a> explains each step, the prerequisites,
+    and what to do when your setup differs.</p>
+
+    <div class="note">
+      <p><strong>Prerequisites:</strong> Python 3.10 or newer, a running MicroK8s cluster, and
+      the <code>claude</code> CLI. A local <code>kubectl</code> is strongly recommended — see
+      <a href="security.html#kubectl-fallback">why it matters</a>.</p>
+    </div>
+
+    <h2 id="topologies">Where it runs</h2>
+    <p>The server has two backends, and you can use either or both.</p>
+
+    <p>The <strong>kubectl backend</strong> talks to the Kubernetes API server over the network
+    using a kubeconfig. It drives every <code>kubectl</code>-level tool. The
+    <strong>node backend</strong> runs <code>microk8s ...</code> on the node itself for addon
+    management and snap-level status — locally if the server sits on the node, otherwise over SSH.</p>
+
+    <pre><code>A)  workstation                                  microk8s node
+    claude CLI ── stdio ── mcp server ── :16443 ── kube-apiserver
+                                      └─ ssh ───── microk8s snap
+
+B)  workstation                                  microk8s node
+    claude CLI ── ssh ──────────────────────────── mcp server ── localhost</code></pre>
+
+    <p><strong>Topology A is the better default.</strong> The server runs on your workstation,
+    holds a scoped kubeconfig, and only needs SSH for addon commands. Skip the SSH setup entirely
+    and everything still works except <code>microk8s_status</code> and <code>manage_addon</code>.</p>
+
+    <h2 id="safety">How it stays safe</h2>
+    <p>Handing a language model access to a Kubernetes cluster deserves some care. The design
+    takes that seriously:</p>
+
+    <ul>
+      <li><strong>Read-only by default.</strong> Mutating tools refuse to run until you start
+      the server with <code>MICROK8S_MCP_MODE=read-write</code>.</li>
+      <li><strong>Its own identity.</strong> You mint a kubeconfig for a purpose-built
+      <code>claude-mcp</code> ServiceAccount, not your admin credential.</li>
+      <li><strong>No Secret access.</strong> The bundled RBAC role grants get/list/watch on
+      everything <em>except</em> Secrets, so cluster credentials cannot end up in a model context.</li>
+      <li><strong>No exec, no port-forward, no shell.</strong> An exec tool would be arbitrary
+      code execution in your cluster driven by model output. It is deliberately absent.</li>
+      <li><strong>No bulk deletes.</strong> <code>delete_resource</code> takes one kind and one
+      name, requires <code>confirm=True</code>, and has no selector path.</li>
+      <li><strong>No shell interpolation.</strong> Commands are built as argument lists, never
+      strings, and every name is validated against a strict pattern.</li>
+    </ul>
+
+    <p>The <a href="security.html">security model</a> page explains the two enforcement layers,
+    which one actually binds, and how to verify what your credential can really do.</p>
+
+    <div class="warn">
+      <p><strong>Before you apply <code>rbac.yaml</code>:</strong> as shipped, it grants
+      cluster-wide write access. That is a deliberate default for a homelab, and the wrong one
+      for anything you care about. <a href="security.html#rbac">Read this first</a>.</p>
+    </div>
+
+    <h2>Where to go next</h2>
+    <div class="cards">
+      <div class="card">
+        <h3><a href="install.html">Installation</a></h3>
+        <p>Prerequisites, both topologies, minting a scoped credential, and registering with the CLI.</p>
+      </div>
+      <div class="card">
+        <h3><a href="configure.html">Configuration</a></h3>
+        <p>Every environment variable, what it defaults to, and which ones actually gate behaviour.</p>
+      </div>
+      <div class="card">
+        <h3><a href="tools.html">Tool reference</a></h3>
+        <p>All 16 tools and 2 prompts, with arguments and what each one runs underneath.</p>
+      </div>
+      <div class="card">
+        <h3><a href="troubleshooting.html">Troubleshooting</a></h3>
+        <p>The errors people actually hit, and what each one means.</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<footer>
+  <p>microk8s-mcp is free software under the
+  <a href="https://github.com/pierrejochem/microk8s-mcp/blob/main/LICENSE">MIT licence</a> —
+  <a href="https://github.com/pierrejochem/microk8s-mcp">source on GitHub</a>.</p>
+  <p>Not affiliated with Canonical or the Kubernetes project.</p>
+</footer>
+
+</body>
+</html>

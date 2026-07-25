@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tool reference — all 16 microk8s-mcp tools and prompts</title>
+<meta name="description" content="Complete reference for the microk8s-mcp tools: cluster_overview, list_resources, get_resource, describe_resource, get_logs, get_events, top, api_resources, rollout_status, microk8s_status, apply_manifest, scale_workload, rollout_restart, delete_resource, manage_addon and node_maintenance.">
+<link rel="canonical" href="https://pierrejochem.github.io/microk8s-mcp/tools.html">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="microk8s-mcp">
+<meta property="og:title" content="Tool reference — all 16 microk8s-mcp tools and prompts">
+<meta property="og:description" content="Every tool the server exposes to Claude, with arguments and what it runs underneath.">
+<meta property="og:url" content="https://pierrejochem.github.io/microk8s-mcp/tools.html">
+<meta property="og:image" content="https://pierrejochem.github.io/microk8s-mcp/assets/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://pierrejochem.github.io/microk8s-mcp/assets/og-image.png">
+<link rel="icon" href="assets/microk8s-mcp-mark.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <a class="brand" href="index.html">
+    <svg viewBox="18 18 65 76" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+      <path d="M24 24 24 88M24 62 24 70 52 70 52 24" fill="none" stroke="#ffffff" stroke-width="8" stroke-linejoin="miter" stroke-linecap="butt"></path>
+      <g fill="none" stroke="rgba(255,255,255,.75)" stroke-width="2.6"><rect x="64" y="30" width="16" height="16"></rect><rect x="64" y="50" width="16" height="16"></rect></g>
+      <rect x="68" y="54" width="8" height="8" fill="#e95420"></rect>
+    </svg>
+    microk8s-mcp
+  </a>
+  <span class="spacer"></span>
+  <a class="gh" href="https://github.com/pierrejochem/microk8s-mcp">View on GitHub</a>
+</header>
+
+<div class="layout">
+  <div class="sidebar">
+    <nav aria-label="Documentation">
+      <h2>Documentation</h2>
+      <ul>
+        <li><a href="index.html">Overview</a></li>
+        <li><a href="install.html">Installation</a></li>
+        <li><a href="configure.html">Configuration</a></li>
+        <li><a href="tools.html" aria-current="page">Tool reference</a></li>
+        <li><a href="security.html">Security model</a></li>
+        <li><a href="troubleshooting.html">Troubleshooting</a></li>
+      </ul>
+      <h2>On this page</h2>
+      <ul>
+        <li><a href="#read">Read tools (10)</a></li>
+        <li><a href="#write">Write tools (6)</a></li>
+        <li><a href="#prompts">Prompts (2)</a></li>
+        <li><a href="#validation">Argument validation</a></li>
+      </ul>
+    </nav>
+  </div>
+
+  <main id="main">
+    <h1>Tool reference</h1>
+    <p class="lede">Sixteen tools and two prompts. You never call these by hand — Claude picks
+    them based on what you ask. Knowing what exists helps you ask better questions, and helps you
+    judge what you are actually granting.</p>
+
+    <p>Read tools work as soon as the server is registered. Write tools refuse unless the server
+    was started with <code>MICROK8S_MCP_MODE=read-write</code>, and several need a further switch
+    on top of that.</p>
+
+    <h2 id="read">Read tools <span class="badge badge-read">always available</span></h2>
+
+    <div class="tool">
+      <h3>cluster_overview()</h3>
+      <p>A snapshot of cluster health: nodes, MicroK8s addons, namespaces, workloads that are not
+      Running or Completed, and recent warning events. This is the orientation tool — Claude is
+      told to start here for open-ended questions.</p>
+      <p class="args">No arguments. Sections that fail degrade individually, so a missing node
+      backend still leaves you the kubectl half.</p>
+    </div>
+
+    <div class="tool">
+      <h3>list_resources(kind, …)</h3>
+      <p>Lists resources of a kind: pods, deployments, services, ingresses, PVCs, nodes, CRDs —
+      anything the cluster knows about.</p>
+      <p class="args">Arguments: <code>kind</code>, <code>namespace</code>,
+      <code>all_namespaces</code>, <code>selector</code> (label selector, e.g. <code>app=web</code>),
+      <code>field_selector</code>, <code>output</code> (<code>wide</code>, <code>name</code>,
+      <code>json</code>, <code>yaml</code>).</p>
+    </div>
+
+    <div class="tool">
+      <h3>get_resource(kind, name, …)</h3>
+      <p>Fetches the full manifest of a single object.</p>
+      <p class="args">Arguments: <code>kind</code>, <code>name</code>, <code>namespace</code>,
+      <code>output</code> (<code>yaml</code> or <code>json</code>).</p>
+    </div>
+
+    <div class="tool">
+      <h3>describe_resource(kind, name, …)</h3>
+      <p><code>kubectl describe</code>: status, conditions and the object's recent events. Usually
+      the best first step when something is failing, because it bundles the events that explain why.</p>
+      <p class="args">Arguments: <code>kind</code>, <code>name</code>, <code>namespace</code>.</p>
+    </div>
+
+    <div class="tool">
+      <h3>get_logs(pod, namespace, …)</h3>
+      <p>Container logs for a pod, including the logs of a crashed previous container — which is
+      where the actual cause of a crash loop usually lives.</p>
+      <p class="args">Arguments: <code>pod</code>, <code>namespace</code>, <code>container</code>,
+      <code>tail_lines</code> (default 200, capped at 5000), <code>since</code> (durations like
+      <code>15m</code> or <code>2h</code>), <code>previous</code>.</p>
+    </div>
+
+    <div class="tool">
+      <h3>get_events(…)</h3>
+      <p>Cluster events, newest last, warnings only by default.</p>
+      <p class="args">Arguments: <code>namespace</code>, <code>all_namespaces</code>,
+      <code>only_warnings</code> (default true).</p>
+    </div>
+
+    <div class="tool">
+      <h3>top(scope, …)</h3>
+      <p>CPU and memory usage for nodes or pods. Requires the <code>metrics-server</code> addon —
+      enable it with <code>microk8s enable metrics-server</code>.</p>
+      <p class="args">Arguments: <code>scope</code> (<code>nodes</code> or <code>pods</code>),
+      <code>namespace</code>.</p>
+    </div>
+
+    <div class="tool">
+      <h3>api_resources()</h3>
+      <p>Every resource kind the cluster knows about, including CRDs. Useful when it is not obvious
+      what <code>kind</code> to pass to the other tools.</p>
+      <p class="args">No arguments.</p>
+    </div>
+
+    <div class="tool">
+      <h3>rollout_status(kind, name, namespace)</h3>
+      <p>Current rollout state of a deployment, statefulset or daemonset. Times out after 20
+      seconds rather than blocking on a rollout that is stuck.</p>
+      <p class="args">Arguments: <code>kind</code>, <code>name</code>, <code>namespace</code>.</p>
+    </div>
+
+    <div class="tool">
+      <h3>microk8s_status()</h3>
+      <p>MicroK8s snap status: whether the cluster is running, its HA state, and which addons are
+      enabled. Needs the node backend — either the server runs on the node, or
+      <code>MICROK8S_MCP_SSH_HOST</code> is set.</p>
+      <p class="args">No arguments.</p>
+    </div>
+
+    <h2 id="write">Write tools <span class="badge badge-write">read-write mode</span></h2>
+
+    <p>All six refuse with a clear message unless <code>MICROK8S_MCP_MODE=read-write</code>. Each
+    also honours the namespace allowlist and the protected-namespace rule.</p>
+
+    <div class="tool">
+      <h3>apply_manifest(manifest_yaml, …)</h3>
+      <p>Applies a YAML manifest, including multi-document YAML. <strong>Defaults to a server-side
+      dry run</strong> and returns a diff, so the intended workflow is: call once with
+      <code>dry_run=True</code>, look at the diff, then call again with <code>dry_run=False</code>
+      to commit.</p>
+      <p class="args">Arguments: <code>manifest_yaml</code>, <code>namespace</code>,
+      <code>dry_run</code> (default true).</p>
+    </div>
+
+    <div class="tool">
+      <h3>scale_workload(kind, name, namespace, replicas)</h3>
+      <p>Scales a deployment, statefulset or replicaset. Replica counts are clamped to 0–100.</p>
+      <p class="args">Arguments: <code>kind</code>, <code>name</code>, <code>namespace</code>,
+      <code>replicas</code>.</p>
+    </div>
+
+    <div class="tool">
+      <h3>rollout_restart(kind, name, namespace)</h3>
+      <p>Triggers a rolling restart of a deployment, statefulset or daemonset.</p>
+      <p class="args">Arguments: <code>kind</code>, <code>name</code>, <code>namespace</code>.</p>
+    </div>
+
+    <div class="tool">
+      <h3>delete_resource(kind, name, namespace, confirm) <span class="badge badge-danger">destructive</span></h3>
+      <p>Deletes one named resource, and requires <code>confirm=True</code>. Bulk and selector
+      deletes are deliberately not supported — there is no <code>--all</code> path, so the blast
+      radius of any single call is one object.</p>
+      <p class="args">Arguments: <code>kind</code>, <code>name</code>, <code>namespace</code>,
+      <code>confirm</code> (default false).</p>
+    </div>
+
+    <div class="tool">
+      <h3>manage_addon(action, addon, …)</h3>
+      <p>Enables or disables a MicroK8s addon: dns, ingress, storage, metrics-server, cert-manager,
+      registry and the rest. Needs <code>MICROK8S_MCP_ALLOW_ADDON_CHANGES=true</code> on top of
+      read-write mode.</p>
+      <p class="args">Arguments: <code>action</code> (<code>enable</code>/<code>disable</code>),
+      <code>addon</code>, <code>arguments</code> (passed after a colon, e.g. <code>size=40Gi</code>).</p>
+      <div class="warn"><p>This runs <code>microk8s enable/disable</code> on the node, which is
+      snap-level root. RBAC does not constrain it in any way.</p></div>
+    </div>
+
+    <div class="tool">
+      <h3>node_maintenance(action, node, confirm) <span class="badge badge-danger">destructive</span></h3>
+      <p>Cordons, uncordons or drains a node. Needs
+      <code>MICROK8S_MCP_ALLOW_NODE_OPS=true</code>; cordon and drain also require
+      <code>confirm=True</code>.</p>
+      <p class="args">Arguments: <code>action</code>
+      (<code>cordon</code>/<code>uncordon</code>/<code>drain</code>), <code>node</code>,
+      <code>confirm</code>.</p>
+      <div class="danger"><p>On a single-node MicroK8s install, a drain evicts everything with
+      nowhere to reschedule it. That is your whole cluster down.</p></div>
+    </div>
+
+    <h2 id="prompts">Prompts</h2>
+    <p>Two ready-made workflows, available from the prompt picker in Claude Code.</p>
+
+    <div class="tool">
+      <h3>triage_namespace(namespace)</h3>
+      <p>Walks through diagnosing a broken namespace: list what is there, describe anything not
+      Ready, pull logs (including previous-container logs for crash loops), check warning events,
+      then report a likely root cause and propose a fix — explicitly without changing anything first.</p>
+    </div>
+
+    <div class="tool">
+      <h3>health_report()</h3>
+      <p>A short cluster health report: node conditions and capacity, enabled addons, unhealthy
+      workloads, PVCs that are not Bound, and anything in the warning events worth acting on.</p>
+    </div>
+
+    <h2 id="validation">How arguments are validated</h2>
+    <p>Every tool argument that reaches a command line is checked first. This is the part that
+    keeps model output from turning into an unintended <code>kubectl</code> flag.</p>
+
+    <ul>
+      <li><strong>Kinds, names, containers and nodes</strong> must match
+      <code>^[a-zA-Z0-9][a-zA-Z0-9._/-]*$</code> — so a "name" of <code>--all</code> is rejected
+      outright, because it does not start with an alphanumeric.</li>
+      <li><strong>Namespaces</strong> must match <code>^[a-z0-9][a-z0-9-]{0,62}$</code>, then pass
+      the allowlist, then — for writes — the protected-namespace check.</li>
+      <li><strong>Commands are argument lists, never strings.</strong> Nothing is passed through a
+      shell, so shell metacharacters have no meaning. Remote SSH commands are quoted per argument
+      with <code>shlex.quote</code>.</li>
+      <li><strong>Output is clipped</strong> at <code>MICROK8S_MCP_MAX_OUTPUT</code> characters,
+      keeping both ends and noting what was dropped.</li>
+    </ul>
+
+    <p>The test suite covers exactly these paths — argument injection, read-only refusal, the
+    <code>confirm=True</code> requirement, and backend selection.</p>
+  </main>
+</div>
+
+<footer>
+  <p>microk8s-mcp is free software under the
+  <a href="https://github.com/pierrejochem/microk8s-mcp/blob/main/LICENSE">MIT licence</a> —
+  <a href="https://github.com/pierrejochem/microk8s-mcp">source on GitHub</a>.</p>
+  <p>Not affiliated with Canonical or the Kubernetes project.</p>
+</footer>
+
+</body>
+</html>

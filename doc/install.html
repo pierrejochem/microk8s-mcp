@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Installing microk8s-mcp — setup guide for Claude Code and MicroK8s</title>
+<meta name="description" content="Step-by-step installation of the microk8s-mcp server: prerequisites, both topologies, minting a scoped kubeconfig for a claude-mcp ServiceAccount, and registering the server with the Claude CLI.">
+<link rel="canonical" href="https://pierrejochem.github.io/microk8s-mcp/install.html">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="microk8s-mcp">
+<meta property="og:title" content="Installing microk8s-mcp — setup guide for Claude Code and MicroK8s">
+<meta property="og:description" content="Prerequisites, both topologies, minting a scoped kubeconfig, and registering the server with the Claude CLI.">
+<meta property="og:url" content="https://pierrejochem.github.io/microk8s-mcp/install.html">
+<meta property="og:image" content="https://pierrejochem.github.io/microk8s-mcp/assets/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://pierrejochem.github.io/microk8s-mcp/assets/og-image.png">
+<link rel="icon" href="assets/microk8s-mcp-mark.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  "name": "Install microk8s-mcp and connect it to Claude Code",
+  "description": "Install the microk8s-mcp server, mint a scoped Kubernetes credential, and register the server with the Claude CLI.",
+  "totalTime": "PT15M",
+  "supply": [
+    { "@type": "HowToSupply", "name": "A running MicroK8s cluster" },
+    { "@type": "HowToSupply", "name": "Python 3.10 or newer" },
+    { "@type": "HowToSupply", "name": "The claude CLI" }
+  ],
+  "step": [
+    { "@type": "HowToStep", "name": "Decide where the server runs", "text": "Choose topology A (server on your workstation, recommended) or topology B (server on the MicroK8s node).", "url": "https://pierrejochem.github.io/microk8s-mcp/install.html#topology" },
+    { "@type": "HowToStep", "name": "Check prerequisites", "text": "Python 3.10+, python3-venv, the claude CLI and a local kubectl on PATH. Run make doctor to verify.", "url": "https://pierrejochem.github.io/microk8s-mcp/install.html#prerequisites" },
+    { "@type": "HowToStep", "name": "Install the server", "text": "Clone the repository and run make install to build a virtualenv and install the package.", "url": "https://pierrejochem.github.io/microk8s-mcp/install.html#install" },
+    { "@type": "HowToStep", "name": "Give it a scoped identity", "text": "Run make node-setup SSH_HOST=user@host to apply the RBAC role and mint a kubeconfig for the claude-mcp ServiceAccount.", "url": "https://pierrejochem.github.io/microk8s-mcp/install.html#identity" },
+    { "@type": "HowToStep", "name": "Register with the Claude CLI", "text": "Run make register SSH_HOST=user@host, then restart Claude Code and check /mcp.", "url": "https://pierrejochem.github.io/microk8s-mcp/install.html#register" }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <a class="brand" href="index.html">
+    <svg viewBox="18 18 65 76" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+      <path d="M24 24 24 88M24 62 24 70 52 70 52 24" fill="none" stroke="#ffffff" stroke-width="8" stroke-linejoin="miter" stroke-linecap="butt"></path>
+      <g fill="none" stroke="rgba(255,255,255,.75)" stroke-width="2.6"><rect x="64" y="30" width="16" height="16"></rect><rect x="64" y="50" width="16" height="16"></rect></g>
+      <rect x="68" y="54" width="8" height="8" fill="#e95420"></rect>
+    </svg>
+    microk8s-mcp
+  </a>
+  <span class="spacer"></span>
+  <a class="gh" href="https://github.com/pierrejochem/microk8s-mcp">View on GitHub</a>
+</header>
+
+<div class="layout">
+  <div class="sidebar">
+    <nav aria-label="Documentation">
+      <h2>Documentation</h2>
+      <ul>
+        <li><a href="index.html">Overview</a></li>
+        <li><a href="install.html" aria-current="page">Installation</a></li>
+        <li><a href="configure.html">Configuration</a></li>
+        <li><a href="tools.html">Tool reference</a></li>
+        <li><a href="security.html">Security model</a></li>
+        <li><a href="troubleshooting.html">Troubleshooting</a></li>
+      </ul>
+      <h2>On this page</h2>
+      <ul>
+        <li><a href="#topology">1. Where it runs</a></li>
+        <li><a href="#prerequisites">2. Prerequisites</a></li>
+        <li><a href="#install">3. Install the server</a></li>
+        <li><a href="#identity">4. Scoped identity</a></li>
+        <li><a href="#register">5. Register with Claude</a></li>
+        <li><a href="#verify">6. Verify</a></li>
+        <li><a href="#upgrade">Upgrading</a></li>
+        <li><a href="#uninstall">Uninstalling</a></li>
+      </ul>
+    </nav>
+  </div>
+
+  <main id="main">
+    <h1>Installation</h1>
+    <p class="lede">About fifteen minutes, most of it waiting for pip. The short version is three
+    commands; the rest of this page explains what each one does and how to vary it.</p>
+
+    <pre><code>make install
+make node-setup SSH_HOST=you@your-node
+make register   SSH_HOST=you@your-node</code></pre>
+
+    <h2 id="topology">1. Decide where the server runs</h2>
+    <p>Pick this first, because it decides which machine you run the later steps on.</p>
+
+    <h3>Topology A — server on your workstation (recommended)</h3>
+    <pre><code>workstation                                  microk8s node
+claude CLI ── stdio ── mcp server ── :16443 ── kube-apiserver
+                                  └─ ssh ───── microk8s snap</code></pre>
+    <p>Everything installs on your workstation. The server holds a scoped kubeconfig and reaches
+    the API server over the network. SSH is only needed for <code>microk8s_status</code> and
+    <code>manage_addon</code> — skip it and everything else still works. Nothing is installed on
+    the node.</p>
+
+    <h3>Topology B — server on the node</h3>
+    <pre><code>workstation                                  microk8s node
+claude CLI ── ssh ──────────────────────────── mcp server ── localhost</code></pre>
+    <p>Install on the node itself. No SSH configuration needed; the node backend runs locally.</p>
+
+    <p>The rest of this page assumes topology A and calls out where B differs.</p>
+
+    <h2 id="prerequisites">2. Prerequisites</h2>
+    <p>On the machine that will run the server:</p>
+    <ul>
+      <li>Python 3.10 or newer</li>
+      <li><code>python3-venv</code> — on Debian/Ubuntu: <code>sudo apt install python3-venv</code></li>
+      <li>The <code>claude</code> CLI, if this is where you run Claude Code</li>
+      <li><code>kubectl</code> on PATH — strongly recommended, and the only path that honours
+      the scoped kubeconfig</li>
+      <li><code>ssh</code> on PATH, if you want addon management under topology A</li>
+    </ul>
+
+    <p>On the MicroK8s node: a running cluster, which
+    <code>microk8s status --wait-ready</code> will confirm.</p>
+
+    <div class="warn">
+      <p><strong>Install kubectl locally.</strong> Without it the server falls back to
+      <code>microk8s kubectl</code> on the node, which runs under MicroK8s' own <em>admin</em>
+      credential — the scoped kubeconfig and the bundled reader role stop applying, and Secrets
+      become readable again. The server logs a warning when this happens, but it is easy to miss.
+      <a href="security.html#kubectl-fallback">More on this</a>.</p>
+    </div>
+
+    <p>Match your cluster's minor version. No root required:</p>
+    <pre><code>V=v1.26.15   # match `kubectl version` on the node
+curl -fsSLO "https://dl.k8s.io/release/$V/bin/linux/amd64/kubectl"
+curl -fsSLO "https://dl.k8s.io/release/$V/bin/linux/amd64/kubectl.sha256"
+echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check
+install -m 755 kubectl ~/.local/bin/kubectl</code></pre>
+
+    <p>Check what you have — this installs nothing:</p>
+    <pre><code>make doctor</code></pre>
+
+    <p>It reports your Python version, whether the venv exists, and whether kubectl, claude, ssh
+    and the kubeconfig are present. Add <code>SSH_HOST=</code> and it also probes the node for
+    reachability, whether <code>microk8s</code> is on PATH in a non-interactive shell there, and
+    which API server address will be used.</p>
+
+    <h2 id="install">3. Install the server</h2>
+    <pre><code>git clone https://github.com/pierrejochem/microk8s-mcp
+cd microk8s-mcp
+make install
+make check</code></pre>
+
+    <p><code>make check</code> should print an <code>import ok</code> line and the absolute path
+    to the entry point. Note that path — the registration needs it, and it must be absolute.</p>
+
+    <h3>Editable versus copy installs</h3>
+    <p>The default is an <em>editable</em> install into <code>./.venv</code>: the venv only links
+    back to this checkout, so your edits are live and the source has to stay put. That is ideal
+    while you are iterating, and a trap if you later move or delete the repository — the
+    registered server breaks, and if you registered at user scope it breaks in every project at once.</p>
+
+    <p>For an install that outlives the checkout, put the venv somewhere stable and copy the
+    package in:</p>
+    <pre><code>make install VENV=~/.local/share/microk8s-mcp/venv EDITABLE=0</code></pre>
+
+    <p><code>EDITABLE=0</code> copies rather than links, so the result is self-contained. The
+    tradeoff is that source edits then need a reinstall. The target force-reinstalls on every run,
+    deliberately: pip treats an already-installed same-version package as satisfied and would
+    otherwise leave stale code in place while reporting success.</p>
+
+    <p>Pass the same <code>VENV=</code> to every target that needs it — <code>check</code>,
+    <code>register</code> and <code>register-rw</code>.</p>
+
+    <h2 id="identity">4. Give it a scoped identity</h2>
+    <p>Do not hand the server your admin kubeconfig. Mint a credential bound to a purpose-built
+    ServiceAccount instead. Under topology A the <code>node-*</code> targets do all of this over
+    SSH from your workstation:</p>
+
+    <pre><code>make node-setup SSH_HOST=you@your-node</code></pre>
+
+    <p>That is the whole step. It runs, in order:</p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Stage</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td><code>check-apiserver</code></td><td>Confirms the API server address resolves and answers from here</td></tr>
+        <tr><td><code>node-check</code></td><td>SSH reachability, <code>microk8s</code> on PATH, kubectl runnable</td></tr>
+        <tr><td><code>node-rbac</code></td><td>Streams <code>rbac.yaml</code> to <code>microk8s kubectl apply -f -</code></td></tr>
+        <tr><td><code>node-kubeconfig</code></td><td>Mints the kubeconfig on the node, writes it here at mode 600</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <p>It creates the <code>mcp-system</code> namespace, a <code>claude-mcp</code> ServiceAccount,
+    a long-lived token Secret, and a reader ClusterRole bound to it. The reader role grants
+    get/list/watch cluster-wide <strong>except Secrets</strong> — deliberately, so cluster
+    credentials can never land in a model context.</p>
+
+    <h3>About the API server address</h3>
+    <p><code>APISERVER</code> defaults to <code>https://&lt;node&gt;:16443</code>, where the node
+    is <code>SSH_HOST</code> put through <code>ssh -G</code>. That resolution matters:
+    <code>SSH_HOST</code> is very often an alias from <code>~/.ssh/config</code>, and kubectl does
+    not read that file. Given</p>
+
+    <pre><code>Host k8s-node
+    HostName 10.0.0.5</code></pre>
+
+    <p><code>make node-setup SSH_HOST=k8s-node</code> bakes <code>https://10.0.0.5:16443</code>
+    into the kubeconfig rather than the unusable <code>https://k8s-node:16443</code>. Override it
+    when the node answers on a different address than you reach it at:</p>
+
+    <pre><code>make node-setup SSH_HOST=you@10.0.0.5 APISERVER=https://k8s.example:16443</code></pre>
+
+    <p>Either way the address is validated before anything is minted. Unresolvable is a hard stop;
+    resolvable but unanswered is a warning, since the node may just be behind a VPN that is
+    currently down. The kubeconfig is written to a temp file and checked before replacing the
+    destination, so a dropped connection can never leave a truncated credential in place.</p>
+
+    <h3>If you are already on the node (topology B)</h3>
+    <pre><code>make rbac
+make kubeconfig APISERVER=https://k8s.example:16443</code></pre>
+    <p><code>APISERVER</code> is required here — there is no <code>SSH_HOST</code> to infer it from.</p>
+
+    <div class="danger">
+      <p><strong>Applying <code>rbac.yaml</code> unchanged grants cluster-wide write access.</strong>
+      The <code>claude-mcp-operator</code> ClusterRoleBinding is active in the repository as shipped.
+      If you want read-only, comment it out <em>before</em> applying. The
+      <a href="security.html#rbac">security model</a> page covers all three ways to shape that grant.</p>
+    </div>
+
+    <h2 id="register">5. Register with the Claude CLI</h2>
+    <p>Read-only, which is where you should start:</p>
+    <pre><code>make register SSH_HOST=you@your-node</code></pre>
+
+    <p>That fills in absolute paths — including <code>MICROK8S_MCP_KUBECTL</code>, which matters
+    because Claude Code launches the server with its own <code>PATH</code>. It expands to roughly:</p>
+
+    <pre><code>claude mcp add --transport stdio microk8s \
+  --env MICROK8S_MCP_KUBECONFIG=$HOME/.kube/claude-mcp.kubeconfig \
+  --env MICROK8S_MCP_SSH_HOST=you@your-node \
+  -- /abs/path/to/microk8s-mcp/.venv/bin/microk8s-mcp</code></pre>
+
+    <p>For full management, scoped to a couple of namespaces:</p>
+    <pre><code>make register-rw SSH_HOST=you@your-node NAMESPACES=apps,staging</code></pre>
+
+    <p>That registers under the name <code>microk8s-rw</code>, sets
+    <code>MICROK8S_MCP_MODE=read-write</code>, and prints the resulting grant before it acts.
+    Four switches control the rest — see <a href="configure.html#register-flags">the configuration
+    reference</a> for all of them.</p>
+
+    <p>Under topology B, omit <code>SSH_HOST</code> entirely; the node backend runs locally.
+    Use <code>SCOPE=user</code> to make the server available in every project rather than just
+    the current directory.</p>
+
+    <div class="note">
+      <p>Running both side by side works well: a read-only <code>microk8s</code> entry pointed at
+      everything, and a <code>microk8s-rw</code> entry scoped to the namespaces you actually
+      deploy to. Pass <code>RW_SERVER_NAME=microk8s</code> if you would rather have one entry —
+      two registrations mean every tool appears twice in a session.</p>
+    </div>
+
+    <h2 id="verify">6. Verify</h2>
+    <pre><code>make list          # or: claude mcp list</code></pre>
+
+    <p>Then restart Claude Code and run <code>/mcp</code> to see the tool inventory. Two things
+    make a healthy registration look like a missing one:</p>
+
+    <ul>
+      <li><strong>Scope.</strong> Without <code>SCOPE=user</code> the entry is local — stored
+      per-project and only visible when your working directory is inside that project. Check
+      where it landed with <code>claude mcp get microk8s</code>.</li>
+      <li><strong>Restart.</strong> Claude Code loads MCP servers at session start, so a server
+      registered mid-session will not appear in <code>/mcp</code> until you restart, whatever
+      its scope.</li>
+    </ul>
+
+    <h2 id="upgrade">Upgrading</h2>
+    <p>With the default editable install, a pull is usually enough:</p>
+    <pre><code>git pull
+make install        # only needed if dependencies changed
+make check</code></pre>
+
+    <p>With a copy install, the pull changes nothing until you reinstall, because the venv holds
+    its own copy:</p>
+    <pre><code>git pull
+make install VENV=~/.local/share/microk8s-mcp/venv EDITABLE=0
+make check   VENV=~/.local/share/microk8s-mcp/venv</code></pre>
+
+    <p>Forgetting that reinstall is the failure mode: everything reports success and the old code
+    keeps running. If behaviour does not match the source, ask the venv where it imports from —
+    from <em>outside</em> the checkout, since <code>python -c</code> prepends the working directory
+    to <code>sys.path</code>:</p>
+
+    <pre><code>cd /tmp &amp;&amp; ~/.local/share/microk8s-mcp/venv/bin/python -c \
+  "import microk8s_mcp, inspect; print(inspect.getfile(microk8s_mcp))"</code></pre>
+
+    <h2 id="uninstall">Uninstalling</h2>
+    <pre><code>make unregister SERVER_NAME=microk8s
+make distclean      # removes .venv and all build artefacts</code></pre>
+
+    <p>To remove the cluster-side identity too:</p>
+    <pre><code>make node-teardown SSH_HOST=you@your-node
+rm -f ~/.kube/claude-mcp.kubeconfig</code></pre>
+
+    <p>Delete the local kubeconfig as well — it holds a live token until the Secret is gone.</p>
+
+    <p>Something not working? The <a href="troubleshooting.html">troubleshooting page</a> covers
+    the errors people actually hit.</p>
+  </main>
+</div>
+
+<footer>
+  <p>microk8s-mcp is free software under the
+  <a href="https://github.com/pierrejochem/microk8s-mcp/blob/main/LICENSE">MIT licence</a> —
+  <a href="https://github.com/pierrejochem/microk8s-mcp">source on GitHub</a>.</p>
+  <p>Not affiliated with Canonical or the Kubernetes project.</p>
+</footer>
+
+</body>
+</html>

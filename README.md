@@ -7,6 +7,13 @@ manifests, restart rollouts, and manage addons.
 The server is read-only by default, and every mutating capability sits behind a
 separate switch.
 
+**📖 [Full documentation](https://pierrejochem.github.io/microk8s-mcp/)** —
+[install guide](https://pierrejochem.github.io/microk8s-mcp/install.html) ·
+[configuration](https://pierrejochem.github.io/microk8s-mcp/configure.html) ·
+[tool reference](https://pierrejochem.github.io/microk8s-mcp/tools.html) ·
+[security model](https://pierrejochem.github.io/microk8s-mcp/security.html) ·
+[troubleshooting](https://pierrejochem.github.io/microk8s-mcp/troubleshooting.html)
+
 > [!WARNING]
 > **`rbac.yaml` in this repo grants cluster-wide write.** The
 > `claude-mcp-operator` ClusterRoleBinding is active, so `kubectl apply -f
