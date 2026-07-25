@@ -4,7 +4,31 @@ An MCP server that lets the `claude` CLI operate a MicroK8s cluster: inspect
 workloads, read logs, triage failures, and — when you unlock it — scale, apply
 manifests, restart rollouts, and manage addons.
 
-Read-only by default. Every mutating capability is behind a separate switch.
+The server is read-only by default, and every mutating capability sits behind a
+separate switch.
+
+> [!WARNING]
+> **`rbac.yaml` in this repo grants cluster-wide write.** The
+> `claude-mcp-operator` ClusterRoleBinding is active, so `kubectl apply -f
+> rbac.yaml` gives the ServiceAccount `create/update/patch/delete` on workloads
+> **in every namespace**, plus node cordon/drain and pod eviction. Secrets stay
+> excluded, and the credential cannot escalate its own permissions.
+>
+> If you want read-only, comment out that binding *before* applying — and if
+> you already applied it, `apply` will not remove the binding for you:
+>
+> ```bash
+> kubectl delete clusterrolebinding claude-mcp-operator
+> ```
+>
+> To narrow instead of removing, replace the ClusterRoleBinding with a
+> `RoleBinding` per namespace. That is the only limit the API server enforces;
+> `MICROK8S_MCP_NAMESPACES` is what this server is *willing* to do, not what the
+> credential is *able* to do. Audit the real answer with:
+>
+> ```bash
+> kubectl --kubeconfig ~/.kube/claude-mcp.kubeconfig auth can-i --list
+> ```
 
 ---
 
@@ -111,14 +135,9 @@ The bundled reader role grants get/list/watch across the cluster **except
 Secrets** — deliberately, so cluster credentials can never end up in a model
 context.
 
-> **This checkout has write access enabled.** The `claude-mcp-operator`
-> ClusterRoleBinding at the bottom of `rbac.yaml` is uncommented, so applying
-> it grants `create/update/patch/delete` on workloads **in every namespace**,
-> plus node cordon/drain and pod eviction. Secrets remain excluded. Comment
-> that binding out and re-apply to go back to read-only.
-
-Three ways to shape the write grant, in descending order of how much they
-actually protect you:
+As noted at the top, the `claude-mcp-operator` binding is active in this repo,
+so applying `rbac.yaml` unchanged grants cluster-wide write. Three ways to shape
+that grant, in descending order of how much they actually protect you:
 
 | Approach | Enforced by | Effect |
 |---|---|---|
