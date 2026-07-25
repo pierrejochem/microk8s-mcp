@@ -1,0 +1,117 @@
+name: Release
+
+# Cut a release by pushing a tag:
+#   git tag v0.2.0 && git push origin v0.2.0
+#
+# The tag must match the version in pyproject.toml. That is checked before
+# anything is published, because a Release whose artifacts disagree with their
+# own metadata is worse than no Release.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to build a release from (e.g. v0.2.0)"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - id: check
+        name: Tag must match pyproject version
+        run: |
+          set -euo pipefail
+          tag="${{ inputs.tag || github.ref_name }}"
+          version="$(python -c "
+          import tomllib, pathlib
+          print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")"
+          echo "tag=$tag  pyproject=$version"
+          if [ "$tag" != "v$version" ]; then
+            echo "::error::tag $tag does not match pyproject version $version (expected v$version)"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  test:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - name: Never release a red build
+        run: |
+          ruff check .
+          pytest --rootdir="$GITHUB_WORKSPACE" "$GITHUB_WORKSPACE/tests"
+        working-directory: ${{ runner.temp }}
+
+  release:
+    needs: [verify, test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # required to create the Release
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0 # full history so the changelog can look back
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install build twine
+      - name: Build
+        run: python -m build
+      - name: Validate metadata
+        run: twine check --strict dist/*
+      - name: Generate release notes from commits
+        id: notes
+        run: |
+          set -euo pipefail
+          tag="${{ inputs.tag || github.ref_name }}"
+          previous="$(git describe --tags --abbrev=0 "$tag^" 2>/dev/null || true)"
+          {
+            echo "## microk8s-mcp ${tag}"
+            echo
+            if [ -n "$previous" ]; then
+              echo "Changes since ${previous}:"
+              echo
+              git log --no-merges --pretty='- %s' "${previous}..${tag}"
+            else
+              echo "First tagged release."
+            fi
+            echo
+            echo "### Install"
+            echo
+            echo '```bash'
+            echo "pip install microk8s_mcp-${{ needs.verify.outputs.version }}-py3-none-any.whl"
+            echo '```'
+            echo
+            echo "> [!WARNING]"
+            echo "> \`rbac.yaml\` grants cluster-wide write. See the README before applying it."
+          } > notes.md
+          cat notes.md
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ inputs.tag || github.ref_name }}" \
+            --title "microk8s-mcp ${{ inputs.tag || github.ref_name }}" \
+            --notes-file notes.md \
+            dist/*

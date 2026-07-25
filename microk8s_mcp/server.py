@@ -17,7 +17,6 @@ Configuration is entirely via environment variables; see README.md.
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 import re
@@ -171,8 +170,9 @@ def _run(argv: list[str], stdin: str | None = None, timeout: int | None = None) 
         )
     except FileNotFoundError as exc:
         raise ToolError(f"Command not found: {argv[0]} ({exc})") from exc
-    except subprocess.TimeoutExpired:
-        raise ToolError(f"Command timed out after {timeout}s: {argv[0]} {argv[1] if len(argv) > 1 else ''}")
+    except subprocess.TimeoutExpired as exc:
+        detail = f"{argv[0]} {argv[1]}" if len(argv) > 1 else argv[0]
+        raise ToolError(f"Command timed out after {timeout}s: {detail}") from exc
 
     out = (proc.stdout or "").strip()
     err = (proc.stderr or "").strip()
@@ -225,7 +225,9 @@ def kubectl(args: list[str], stdin: str | None = None, timeout: int | None = Non
     return node_exec(["kubectl", *args], stdin=stdin, timeout=timeout)
 
 
-def node_exec(args: list[str], stdin: str | None = None, timeout: int | None = None) -> str:
+def node_exec(
+    args: list[str], stdin: str | None = None, timeout: int | None = None
+) -> str:
     """Run `microk8s <args>` on the node (locally or over SSH)."""
     if CFG.ssh_host:
         remote = " ".join(shlex.quote(a) for a in [CFG.microk8s_bin, *args])
@@ -255,7 +257,9 @@ mcp = FastMCP(
 
 READ = ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False)
 WRITE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False)
-DESTRUCTIVE = ToolAnnotations(readOnlyHint=False, destructiveHint=True, openWorldHint=False)
+DESTRUCTIVE = ToolAnnotations(
+    readOnlyHint=False, destructiveHint=True, openWorldHint=False
+)
 
 
 def _guard(fn):

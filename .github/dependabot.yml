@@ -1,0 +1,31 @@
+version: 2
+
+updates:
+  # Python dependencies declared in pyproject.toml.
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]
+    commit-message:
+      prefix: "deps"
+    groups:
+      # One PR for routine dev-tool bumps; security fixes still come separately
+      # and immediately, so grouping does not delay anything that matters.
+      dev-tooling:
+        patterns: ["pytest*", "ruff"]
+        update-types: ["minor", "patch"]
+
+  # The workflows themselves. Unpinned or stale actions are a supply-chain path
+  # into a repo that holds cluster tooling, so these get updated too.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "github-actions"]
+    commit-message:
+      prefix: "ci"

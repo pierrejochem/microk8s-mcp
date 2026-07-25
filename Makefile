@@ -124,7 +124,7 @@ NODE_APISERVER :=
 endif
 
 .DEFAULT_GOAL := help
-.PHONY: help venv install dev check doctor require-ssh node-check check-apiserver \
+.PHONY: help venv install dev test lint audit ci check doctor require-ssh node-check check-apiserver \
         node-setup node-rbac node-kubeconfig node-status node-teardown \
         rbac kubeconfig register register-rw unregister list clean distclean
 
@@ -163,8 +163,21 @@ endif
 	@echo
 	@echo "Installed ($(if $(filter 0,$(EDITABLE)),copy,editable)). Entry point: $(ENTRY)"
 
-dev: install ## Install plus lint/format tooling
-	$(PIP) install ruff
+dev: $(PY) ## Install with the dev extras (pytest, ruff)
+	$(PIP) install -e ".[dev]"
+
+test: ## Run the test suite
+	@# From / so the checkout cannot shadow the installed package; see `check`.
+	@cd / && $(abspath $(PY)) -m pytest --rootdir="$(CURDIR)" "$(CURDIR)/tests"
+
+lint: ## Lint with ruff
+	$(abspath $(VENV))/bin/ruff check .
+
+audit: ## Scan dependencies for known CVEs
+	$(PIP) install --quiet pip-audit
+	$(abspath $(VENV))/bin/pip-audit .
+
+ci: lint test audit ## Everything CI runs, locally
 
 check: ## Verify the package imports and the entry point resolves
 	@test -x "$(ENTRY)" || { echo "Not installed — run 'make install' first." >&2; exit 1; }

@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Least privilege by default; no job here needs to write to the repo.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff
+      - name: ruff check
+        run: ruff check --output-format=github .
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # requires-python is >=3.10; test the ends and the middle.
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -e ".[dev]"
+      - name: pytest
+        # Run from a scratch directory: `python -c`-style cwd injection also
+        # applies to pytest's rootdir, and importing the local source instead of
+        # the installed package would make an install failure invisible.
+        run: pytest --rootdir="$GITHUB_WORKSPACE" "$GITHUB_WORKSPACE/tests"
+        working-directory: ${{ runner.temp }}
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install build twine
+      - name: Build sdist and wheel
+        run: python -m build
+      - name: Validate metadata
+        run: twine check --strict dist/*
+      - name: Confirm the wheel is self-contained
+        # A wheel that ships only a link back to the checkout would install
+        # cleanly here and break on a user's machine.
+        run: |
+          python -m zipfile -l dist/*.whl | grep -q 'microk8s_mcp/server.py' \
+            || { echo "::error::wheel does not contain the package source"; exit 1; }
+          python -m zipfile -l dist/*.whl | grep -q 'licenses/LICENSE' \
+            || { echo "::error::wheel does not ship LICENSE"; exit 1; }
+      - name: Smoke test the built wheel
+        run: |
+          python -m venv /tmp/smoke
+          /tmp/smoke/bin/pip install --quiet dist/*.whl
+          cd /tmp   # never import from the checkout
+          /tmp/smoke/bin/python -c "
+          import inspect, microk8s_mcp
+          p = inspect.getfile(microk8s_mcp)
+          assert 'site-packages' in p, p
+          print('imported from', p)"
+          /tmp/smoke/bin/microk8s-mcp < /dev/null &
+          sleep 3
+          kill %1 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Audit dependencies for known CVEs
+        uses: pypa/gh-action-pip-audit@v1.1.0
+        with:
+          inputs: .

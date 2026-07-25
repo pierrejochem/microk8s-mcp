@@ -314,6 +314,41 @@ non-interactive shell's PATH. Point at it directly:
 
 ---
 
+## Development
+
+```bash
+make dev     # install with the dev extras (pytest, ruff)
+make ci      # lint + tests + dependency audit, exactly what CI runs
+```
+
+`make test` runs pytest from `/` on purpose: `python -c` and pytest both prepend
+the working directory to `sys.path`, so running from the repo root imports the
+local source and would pass even with nothing installed in the venv. The same
+reasoning applies to `make check`, which also prints `resolved from:` so you can
+see which copy of the code answered.
+
+The suite covers the places where a bug is dangerous rather than merely wrong:
+argument injection through `_tok`/`_ns` (a name of `--all` must never reach
+kubectl), read-only mode refusing every mutating tool before it shells out,
+`delete_resource` requiring `confirm=True`, and backend selection — a
+misselected backend silently runs under the node's admin credential instead of
+the scoped one.
+
+### CI
+
+| Workflow | Trigger | Does |
+|---|---|---|
+| `ci.yml` | push to `main`, PRs | ruff, pytest on Python 3.10–3.13, build + wheel smoke test, `pip-audit` |
+| `release.yml` | pushing a `v*` tag | verifies tag matches `pyproject` version, re-runs lint and tests, builds, creates a GitHub Release with sdist + wheel |
+
+Cut a release with `git tag v0.2.0 && git push origin v0.2.0`. The tag/version
+check runs first, so a mismatched tag fails before anything is published.
+
+Dependabot watches `pip` and `github-actions` weekly; alerts and automated
+security fixes are enabled on the repo.
+
+---
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
