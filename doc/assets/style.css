@@ -4,10 +4,13 @@
 :root {
   --blue: #326ce5;
   --blue-dark: #2456bd;
-  /* Chrome that carries white text needs a deeper blue than the brand tone:
-     white on #326ce5 is only 3.6:1, and on the dark-mode link blue 2.5:1.
-     #2456bd gives 6.7:1 and stays on-brand. */
-  --chrome: #2456bd;
+  /* The top bar matches the lockup's brand blue exactly, in both themes, so
+     the bar and the banner beneath it read as one surface. White on #326ce5
+     measures 4.76:1, which clears AA for normal text. Dark mode must not
+     substitute the lightened link blue here: white on #58a6ff is 2.53:1.
+     --chrome-strong is the deeper tone for button fills. */
+  --chrome: #326ce5;
+  --chrome-strong: #2456bd;
   --chrome-text: #ffffff;
   --orange: #e95420;
   --ink: #1d1f20;
@@ -41,9 +44,9 @@
     --warn-border: #d29922;
     --danger-bg: #25171c;
     --danger-border: #f85149;
-    /* Same deep blue for the bar; the button inverts instead, since a light
-       fill with dark text reads better against a dark page. */
-    --chrome: #1f4a9e;
+    /* Brand blue here too — the bar tracks the lockup, not the theme. */
+    --chrome: #326ce5;
+    --chrome-strong: #2456bd;
     --chrome-text: #ffffff;
   }
 }
@@ -267,7 +270,7 @@ td code { white-space: nowrap; }
   font-size: .95rem;
   border: 1px solid var(--blue);
 }
-.btn-primary { background: var(--chrome); color: var(--chrome-text); border-color: var(--chrome); }
+.btn-primary { background: var(--chrome-strong); color: var(--chrome-text); border-color: var(--chrome-strong); }
 .btn-primary:hover { filter: brightness(1.12); color: var(--chrome-text); }
 
 @media (prefers-color-scheme: dark) {
