@@ -1,7 +1,5 @@
 ![microk8s-mcp — Model Context Protocol server](media/microk8s-mcp-lockup-reverse.svg)
 
-# microk8s-mcp
-
 An MCP server that lets the `claude` CLI operate a MicroK8s cluster: inspect
 workloads, read logs, triage failures, and — when you unlock it — scale, apply
 manifests, restart rollouts, and manage addons.
@@ -333,7 +331,7 @@ The suite covers the places where a bug is dangerous rather than merely wrong:
 argument injection through `_tok`/`_ns` (a name of `--all` must never reach
 kubectl), read-only mode refusing every mutating tool before it shells out,
 `delete_resource` requiring `confirm=True`, and backend selection — a
-misselected backend silently runs under the node's admin credential instead of
+mis-selected backend silently runs under the node's admin credential instead of
 the scoped one.
 
 ### CI
