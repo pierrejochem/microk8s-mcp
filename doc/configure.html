@@ -89,24 +89,24 @@
       <thead><tr><th>Variable</th><th>Default</th><th>Effect</th></tr></thead>
       <tbody>
         <tr>
-          <td><code>MICROK8S_MCP_MODE</code></td>
-          <td><code>read-only</code></td>
-          <td>Set <code>read-write</code> (or <code>rw</code>) to unlock the mutating tools. Anything else keeps the server read-only.</td>
+          <td data-label="Variable"><code>MICROK8S_MCP_MODE</code></td>
+          <td data-label="Default"><code>read-only</code></td>
+          <td data-label="Effect">Set <code>read-write</code> (or <code>rw</code>) to unlock the mutating tools. Anything else keeps the server read-only.</td>
         </tr>
         <tr>
-          <td><code>MICROK8S_MCP_KUBECONFIG</code></td>
-          <td><em>kubectl default</em></td>
-          <td>Path to the scoped kubeconfig. Leave unset to use whatever kubectl would use on its own.</td>
+          <td data-label="Variable"><code>MICROK8S_MCP_KUBECONFIG</code></td>
+          <td data-label="Default"><em>kubectl default</em></td>
+          <td data-label="Effect">Path to the scoped kubeconfig. Leave unset to use whatever kubectl would use on its own.</td>
         </tr>
         <tr>
-          <td><code>MICROK8S_MCP_CONTEXT</code></td>
-          <td><em>current</em></td>
-          <td>kubeconfig context to select, if the file holds more than one.</td>
+          <td data-label="Variable"><code>MICROK8S_MCP_CONTEXT</code></td>
+          <td data-label="Default"><em>current</em></td>
+          <td data-label="Effect">kubeconfig context to select, if the file holds more than one.</td>
         </tr>
         <tr>
-          <td><code>MICROK8S_MCP_KUBECTL</code></td>
-          <td><code>kubectl</code></td>
-          <td>Path to the kubectl binary. <strong>Set this to an absolute path</strong> — see the warning below.</td>
+          <td data-label="Variable"><code>MICROK8S_MCP_KUBECTL</code></td>
+          <td data-label="Default"><code>kubectl</code></td>
+          <td data-label="Effect">Path to the kubectl binary. <strong>Set this to an absolute path</strong> — see the warning below.</td>
         </tr>
       </tbody>
     </table>
@@ -131,24 +131,24 @@
       <thead><tr><th>Variable</th><th>Default</th><th>Effect</th></tr></thead>
       <tbody>
         <tr>
-          <td><code>MICROK8S_MCP_SSH_HOST</code></td>
-          <td><em>unset</em></td>
-          <td><code>user@host</code> for the node backend. Unset means the node backend runs locally.</td>
+          <td data-label="Variable"><code>MICROK8S_MCP_SSH_HOST</code></td>
+          <td data-label="Default"><em>unset</em></td>
+          <td data-label="Effect"><code>user@host</code> for the node backend. Unset means the node backend runs locally.</td>
         </tr>
         <tr>
-          <td><code>MICROK8S_MCP_SSH_KEY</code></td>
-          <td><em>agent/default</em></td>
-          <td>Identity file for SSH, if you are not using an agent.</td>
+          <td data-label="Variable"><code>MICROK8S_MCP_SSH_KEY</code></td>
+          <td data-label="Default"><em>agent/default</em></td>
+          <td data-label="Effect">Identity file for SSH, if you are not using an agent.</td>
         </tr>
         <tr>
-          <td><code>MICROK8S_MCP_SSH</code></td>
-          <td><code>ssh</code></td>
-          <td>The ssh binary to use.</td>
+          <td data-label="Variable"><code>MICROK8S_MCP_SSH</code></td>
+          <td data-label="Default"><code>ssh</code></td>
+          <td data-label="Effect">The ssh binary to use.</td>
         </tr>
         <tr>
-          <td><code>MICROK8S_MCP_MICROK8S</code></td>
-          <td><code>microk8s</code></td>
-          <td>Path to the microk8s binary on the node. Set <code>/snap/bin/microk8s</code> if a non-interactive SSH shell cannot find it.</td>
+          <td data-label="Variable"><code>MICROK8S_MCP_MICROK8S</code></td>
+          <td data-label="Default"><code>microk8s</code></td>
+          <td data-label="Effect">Path to the microk8s binary on the node. Set <code>/snap/bin/microk8s</code> if a non-interactive SSH shell cannot find it.</td>
         </tr>
       </tbody>
     </table>
@@ -167,29 +167,29 @@
       <thead><tr><th>Variable</th><th>Default</th><th>Effect</th></tr></thead>
       <tbody>
         <tr>
-          <td><code>MICROK8S_MCP_NAMESPACES</code></td>
-          <td><code>*</code></td>
-          <td>Comma-separated namespace allowlist. Any tool call naming a namespace outside it is refused.</td>
+          <td data-label="Variable"><code>MICROK8S_MCP_NAMESPACES</code></td>
+          <td data-label="Default"><code>*</code></td>
+          <td data-label="Effect">Comma-separated namespace allowlist. Any tool call naming a namespace outside it is refused.</td>
         </tr>
         <tr>
-          <td><code>MICROK8S_MCP_PROTECTED_NAMESPACES</code></td>
-          <td><code>kube-system,kube-public,<wbr>kube-node-lease,default</code></td>
-          <td>Readable, but writes are blocked unless the next switch is on.</td>
+          <td data-label="Variable"><code>MICROK8S_MCP_PROTECTED_NAMESPACES</code></td>
+          <td data-label="Default"><code>kube-system,kube-public,<wbr>kube-node-lease,default</code></td>
+          <td data-label="Effect">Readable, but writes are blocked unless the next switch is on.</td>
         </tr>
         <tr>
-          <td><code>MICROK8S_MCP_ALLOW_PROTECTED_WRITES</code></td>
-          <td><code>false</code></td>
-          <td>Permit writes to the protected namespaces above.</td>
+          <td data-label="Variable"><code>MICROK8S_MCP_ALLOW_PROTECTED_WRITES</code></td>
+          <td data-label="Default"><code>false</code></td>
+          <td data-label="Effect">Permit writes to the protected namespaces above.</td>
         </tr>
         <tr>
-          <td><code>MICROK8S_MCP_ALLOW_ADDON_CHANGES</code></td>
-          <td><code>false</code></td>
-          <td>Permit <code>manage_addon</code> to enable/disable addons. This is snap-level root on the node — RBAC does not constrain it at all.</td>
+          <td data-label="Variable"><code>MICROK8S_MCP_ALLOW_ADDON_CHANGES</code></td>
+          <td data-label="Default"><code>false</code></td>
+          <td data-label="Effect">Permit <code>manage_addon</code> to enable/disable addons. This is snap-level root on the node — RBAC does not constrain it at all.</td>
         </tr>
         <tr>
-          <td><code>MICROK8S_MCP_ALLOW_NODE_OPS</code></td>
-          <td><code>false</code></td>
-          <td>Permit <code>node_maintenance</code> to cordon, uncordon or drain. On a single-node cluster a drain evicts everything.</td>
+          <td data-label="Variable"><code>MICROK8S_MCP_ALLOW_NODE_OPS</code></td>
+          <td data-label="Default"><code>false</code></td>
+          <td data-label="Effect">Permit <code>node_maintenance</code> to cordon, uncordon or drain. On a single-node cluster a drain evicts everything.</td>
         </tr>
       </tbody>
     </table>
@@ -201,24 +201,24 @@
       <thead><tr><th>Variable</th><th>Default</th><th>Effect</th></tr></thead>
       <tbody>
         <tr>
-          <td><code>MICROK8S_MCP_TIMEOUT</code></td>
-          <td><code>60</code></td>
-          <td>Per-command timeout in seconds. Addon and node operations raise this internally.</td>
+          <td data-label="Variable"><code>MICROK8S_MCP_TIMEOUT</code></td>
+          <td data-label="Default"><code>60</code></td>
+          <td data-label="Effect">Per-command timeout in seconds. Addon and node operations raise this internally.</td>
         </tr>
         <tr>
-          <td><code>MICROK8S_MCP_MAX_OUTPUT</code></td>
-          <td><code>24000</code></td>
-          <td>Output longer than this is clipped in the middle, keeping both ends.</td>
+          <td data-label="Variable"><code>MICROK8S_MCP_MAX_OUTPUT</code></td>
+          <td data-label="Default"><code>24000</code></td>
+          <td data-label="Effect">Output longer than this is clipped in the middle, keeping both ends.</td>
         </tr>
         <tr>
-          <td><code>MICROK8S_MCP_LOG_LEVEL</code></td>
-          <td><code>INFO</code></td>
-          <td>Every command executed is logged to stderr. Capture it if you want an audit trail.</td>
+          <td data-label="Variable"><code>MICROK8S_MCP_LOG_LEVEL</code></td>
+          <td data-label="Default"><code>INFO</code></td>
+          <td data-label="Effect">Every command executed is logged to stderr. Capture it if you want an audit trail.</td>
         </tr>
         <tr>
-          <td><code>MICROK8S_MCP_TRANSPORT</code></td>
-          <td><code>stdio</code></td>
-          <td>MCP transport. Leave it alone unless you know you need something else.</td>
+          <td data-label="Variable"><code>MICROK8S_MCP_TRANSPORT</code></td>
+          <td data-label="Default"><code>stdio</code></td>
+          <td data-label="Effect">MCP transport. Leave it alone unless you know you need something else.</td>
         </tr>
       </tbody>
     </table>
@@ -232,10 +232,10 @@
     <table>
       <thead><tr><th>Variable</th><th>Default</th><th>Effect</th></tr></thead>
       <tbody>
-        <tr><td><code>RW_SERVER_NAME</code></td><td><code>microk8s-rw</code></td><td>Pass <code>microk8s</code> to replace the read-only entry instead of running both.</td></tr>
-        <tr><td><code>ALLOW_ADDON_CHANGES</code></td><td><code>true</code></td><td>Lets <code>manage_addon</code> run <code>microk8s enable/disable</code> over SSH.</td></tr>
-        <tr><td><code>ALLOW_NODE_OPS</code></td><td><code>false</code></td><td>Enables <code>node_maintenance</code> (cordon/uncordon/drain).</td></tr>
-        <tr><td><code>ALLOW_PROTECTED_WRITES</code></td><td><code>false</code></td><td>Permits writes to the protected namespaces.</td></tr>
+        <tr><td data-label="Variable"><code>RW_SERVER_NAME</code></td><td data-label="Default"><code>microk8s-rw</code></td><td data-label="Effect">Pass <code>microk8s</code> to replace the read-only entry instead of running both.</td></tr>
+        <tr><td data-label="Variable"><code>ALLOW_ADDON_CHANGES</code></td><td data-label="Default"><code>true</code></td><td data-label="Effect">Lets <code>manage_addon</code> run <code>microk8s enable/disable</code> over SSH.</td></tr>
+        <tr><td data-label="Variable"><code>ALLOW_NODE_OPS</code></td><td data-label="Default"><code>false</code></td><td data-label="Effect">Enables <code>node_maintenance</code> (cordon/uncordon/drain).</td></tr>
+        <tr><td data-label="Variable"><code>ALLOW_PROTECTED_WRITES</code></td><td data-label="Default"><code>false</code></td><td data-label="Effect">Permits writes to the protected namespaces.</td></tr>
       </tbody>
     </table>
     </div>
@@ -245,14 +245,14 @@
     <table>
       <thead><tr><th>Variable</th><th>Effect</th></tr></thead>
       <tbody>
-        <tr><td><code>SERVER_NAME</code></td><td>Name to register under (default <code>microk8s</code>).</td></tr>
-        <tr><td><code>KUBECONFIG_PATH</code></td><td>Path to the scoped kubeconfig.</td></tr>
-        <tr><td><code>SSH_HOST</code></td><td><code>user@host</code> for the node backend; omit under topology B.</td></tr>
-        <tr><td><code>SSH_KEY</code></td><td>Identity file, if not using an agent.</td></tr>
-        <tr><td><code>NAMESPACES</code></td><td>Comma-separated namespace allowlist.</td></tr>
-        <tr><td><code>SCOPE</code></td><td>Pass <code>SCOPE=user</code> to register for every project.</td></tr>
-        <tr><td><code>KUBECTL_BIN</code></td><td>Local kubectl to bake in; defaults to <code>command -v kubectl</code>.</td></tr>
-        <tr><td><code>VENV</code></td><td>Which virtualenv to register the entry point from.</td></tr>
+        <tr><td data-label="Variable"><code>SERVER_NAME</code></td><td data-label="Effect">Name to register under (default <code>microk8s</code>).</td></tr>
+        <tr><td data-label="Variable"><code>KUBECONFIG_PATH</code></td><td data-label="Effect">Path to the scoped kubeconfig.</td></tr>
+        <tr><td data-label="Variable"><code>SSH_HOST</code></td><td data-label="Effect"><code>user@host</code> for the node backend; omit under topology B.</td></tr>
+        <tr><td data-label="Variable"><code>SSH_KEY</code></td><td data-label="Effect">Identity file, if not using an agent.</td></tr>
+        <tr><td data-label="Variable"><code>NAMESPACES</code></td><td data-label="Effect">Comma-separated namespace allowlist.</td></tr>
+        <tr><td data-label="Variable"><code>SCOPE</code></td><td data-label="Effect">Pass <code>SCOPE=user</code> to register for every project.</td></tr>
+        <tr><td data-label="Variable"><code>KUBECTL_BIN</code></td><td data-label="Effect">Local kubectl to bake in; defaults to <code>command -v kubectl</code>.</td></tr>
+        <tr><td data-label="Variable"><code>VENV</code></td><td data-label="Effect">Which virtualenv to register the entry point from.</td></tr>
       </tbody>
     </table>
     </div>

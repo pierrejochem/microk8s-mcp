@@ -73,16 +73,16 @@
       <thead><tr><th>Layer</th><th>Configured by</th><th>Enforced by</th><th>Is it a boundary?</th></tr></thead>
       <tbody>
         <tr>
-          <td><strong>RBAC</strong> — what the credential is <em>able</em> to do</td>
-          <td><code>rbac.yaml</code></td>
-          <td>The Kubernetes API server</td>
-          <td><strong>Yes.</strong> Real, and enforced no matter who holds the token.</td>
+          <td data-label="Layer"><strong>RBAC</strong> — what the credential is <em>able</em> to do</td>
+          <td data-label="Configured by"><code>rbac.yaml</code></td>
+          <td data-label="Enforced by">The Kubernetes API server</td>
+          <td data-label="Is it a boundary?"><strong>Yes.</strong> Real, and enforced no matter who holds the token.</td>
         </tr>
         <tr>
-          <td><strong>Env vars</strong> — what this server is <em>willing</em> to do</td>
-          <td><code>MICROK8S_MCP_*</code></td>
-          <td>This Python process</td>
-          <td><strong>No.</strong> A convenience. Anything else holding the token ignores it.</td>
+          <td data-label="Layer"><strong>Env vars</strong> — what this server is <em>willing</em> to do</td>
+          <td data-label="Configured by"><code>MICROK8S_MCP_*</code></td>
+          <td data-label="Enforced by">This Python process</td>
+          <td data-label="Is it a boundary?"><strong>No.</strong> A convenience. Anything else holding the token ignores it.</td>
         </tr>
       </tbody>
     </table>
@@ -128,19 +128,19 @@
       <thead><tr><th>Approach</th><th>Enforced by</th><th>Effect</th></tr></thead>
       <tbody>
         <tr>
-          <td>Comment out the <code>claude-mcp-operator</code> binding</td>
-          <td>API server</td>
-          <td>No writes at all</td>
+          <td data-label="Approach">Comment out the <code>claude-mcp-operator</code> binding</td>
+          <td data-label="Enforced by">API server</td>
+          <td data-label="Effect">No writes at all</td>
         </tr>
         <tr>
-          <td>Replace it with per-namespace <code>RoleBinding</code>s</td>
-          <td>API server</td>
-          <td>Writes only in the namespaces you name</td>
+          <td data-label="Approach">Replace it with per-namespace <code>RoleBinding</code>s</td>
+          <td data-label="Enforced by">API server</td>
+          <td data-label="Effect">Writes only in the namespaces you name</td>
         </tr>
         <tr>
-          <td><code>MICROK8S_MCP_NAMESPACES=apps,staging</code></td>
-          <td>This server</td>
-          <td>Server declines elsewhere; the credential could still do it</td>
+          <td data-label="Approach"><code>MICROK8S_MCP_NAMESPACES=apps,staging</code></td>
+          <td data-label="Enforced by">This server</td>
+          <td data-label="Effect">Server declines elsewhere; the credential could still do it</td>
         </tr>
       </tbody>
     </table>

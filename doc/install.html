@@ -185,10 +185,10 @@ make check</code></pre>
     <table>
       <thead><tr><th>Stage</th><th>What it does</th></tr></thead>
       <tbody>
-        <tr><td><code>check-apiserver</code></td><td>Confirms the API server address resolves and answers from here</td></tr>
-        <tr><td><code>node-check</code></td><td>SSH reachability, <code>microk8s</code> on PATH, kubectl runnable</td></tr>
-        <tr><td><code>node-rbac</code></td><td>Streams <code>rbac.yaml</code> to <code>microk8s kubectl apply -f -</code></td></tr>
-        <tr><td><code>node-kubeconfig</code></td><td>Mints the kubeconfig on the node, writes it here at mode 600</td></tr>
+        <tr><td data-label="Stage"><code>check-apiserver</code></td><td data-label="What it does">Confirms the API server address resolves and answers from here</td></tr>
+        <tr><td data-label="Stage"><code>node-check</code></td><td data-label="What it does">SSH reachability, <code>microk8s</code> on PATH, kubectl runnable</td></tr>
+        <tr><td data-label="Stage"><code>node-rbac</code></td><td data-label="What it does">Streams <code>rbac.yaml</code> to <code>microk8s kubectl apply -f -</code></td></tr>
+        <tr><td data-label="Stage"><code>node-kubeconfig</code></td><td data-label="What it does">Mints the kubeconfig on the node, writes it here at mode 600</td></tr>
       </tbody>
     </table>
     </div>
