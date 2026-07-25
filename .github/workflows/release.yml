@@ -6,6 +6,13 @@ name: Release
 # The tag must match the version in pyproject.toml. That is checked before
 # anything is published, because a Release whose artifacts disagree with their
 # own metadata is worse than no Release.
+#
+# One build feeds both destinations: the same sdist and wheel are attached to
+# the GitHub Release and uploaded to PyPI, so the two can never disagree.
+#
+# Publishing uses PyPI Trusted Publishing (OIDC) — there is no API token in
+# this repository. PyPI must be told to trust this workflow first; the
+# one-time setup is in RELEASING.md.
 on:
   push:
     tags: ["v*"]
@@ -14,6 +21,10 @@ on:
       tag:
         description: "Existing tag to build a release from (e.g. v0.2.0)"
         required: true
+      testpypi:
+        description: "Publish to TestPyPI instead of PyPI (skips the GitHub Release)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -62,16 +73,13 @@ jobs:
           pytest --rootdir="$GITHUB_WORKSPACE" "$GITHUB_WORKSPACE/tests"
         working-directory: ${{ runner.temp }}
 
-  release:
+  build:
     needs: [verify, test]
     runs-on: ubuntu-latest
-    permissions:
-      contents: write # required to create the Release
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.tag || github.ref }}
-          fetch-depth: 0 # full history so the changelog can look back
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
@@ -80,6 +88,57 @@ jobs:
         run: python -m build
       - name: Validate metadata
         run: twine check --strict dist/*
+      - name: Smoke test the wheel in a clean venv
+        run: |
+          set -euo pipefail
+          python -m venv /tmp/smoke
+          /tmp/smoke/bin/pip install --quiet dist/*.whl
+          /tmp/smoke/bin/python -c "import microk8s_mcp.server as s; print('import ok:', s.__name__)"
+          test -x /tmp/smoke/bin/microk8s-mcp
+          echo "entry point ok"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  pypi:
+    needs: [verify, build]
+    runs-on: ubuntu-latest
+    # The environment gates the OIDC claim PyPI checks, and gives you a place
+    # to add a required reviewer if you ever want releases to need a human.
+    environment:
+      name: ${{ inputs.testpypi && 'testpypi' || 'pypi' }}
+      url: ${{ inputs.testpypi && 'https://test.pypi.org/p/microk8s-mcp' || 'https://pypi.org/p/microk8s-mcp' }}
+    permissions:
+      id-token: write # mint the OIDC token Trusted Publishing verifies
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - name: Publish
+        uses: pypa/gh-action-pypi-publish@v1.14.1
+        with:
+          repository-url: ${{ inputs.testpypi && 'https://test.pypi.org/legacy/' || 'https://upload.pypi.org/legacy/' }}
+          print-hash: true
+
+  release:
+    needs: [verify, build, pypi]
+    # A TestPyPI dry run should not mint a GitHub Release.
+    if: ${{ !inputs.testpypi }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # required to create the Release
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0 # full history so the changelog can look back
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
       - name: Generate release notes from commits
         id: notes
         run: |
@@ -100,8 +159,12 @@ jobs:
             echo "### Install"
             echo
             echo '```bash'
-            echo "pip install microk8s_mcp-${{ needs.verify.outputs.version }}-py3-none-any.whl"
+            echo "pip install microk8s-mcp==${{ needs.verify.outputs.version }}"
             echo '```'
+            echo
+            echo "The wheel ships the server itself. Cluster setup (\`rbac.yaml\`,"
+            echo "\`make-kubeconfig.sh\`, the make targets) lives in the repository —"
+            echo "see https://pierrejochem.github.io/microk8s-mcp/install.html"
             echo
             echo "> [!WARNING]"
             echo "> \`rbac.yaml\` grants cluster-wide write. See the README before applying it."

@@ -36,6 +36,7 @@ dist/
 htmlcov/
 
 # --- editors --------------------------------------------------------------
+.claude/settings.local.json
 .idea/
 .vscode/
 *.swp

@@ -36,6 +36,21 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["microk8s_mcp"]
 
+# Curated rather than "everything not gitignored": the default sweep pulled in
+# the documentation site, the CI config and local editor settings. The sdist
+# carries the source, the tests, and the operator tooling needed to set a
+# cluster up — nothing else.
+[tool.hatch.build.targets.sdist]
+include = [
+  "/microk8s_mcp",
+  "/tests",
+  "/Makefile",
+  "/make-kubeconfig.sh",
+  "/rbac.yaml",
+  "/install.txt",
+  "/RELEASING.md",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q --strict-markers --strict-config"
