@@ -147,6 +147,10 @@ install -m 755 kubectl ~/.local/bin/kubectl</code></pre>
     which API server address will be used.</p>
 
     <h2 id="install">3. Install the server</h2>
+    <p>Two ways in. Clone the repository if you want the setup tooling with it — that is the
+    path the rest of this guide follows. Install from PyPI if you only want the server binary.</p>
+
+    <h3>From the repository (recommended)</h3>
     <pre><code>git clone https://github.com/pierrejochem/microk8s-mcp
 cd microk8s-mcp
 make install
@@ -154,6 +158,40 @@ make check</code></pre>
 
     <p><code>make check</code> should print an <code>import ok</code> line and the absolute path
     to the entry point. Note that path — the registration needs it, and it must be absolute.</p>
+
+    <h3>From PyPI</h3>
+    <p>The package is published as
+    <a href="https://pypi.org/project/microk8s-mcp/"><code>microk8s-mcp</code></a>. Install it
+    into a virtualenv of its own — not system-wide, and not into a project venv you might delete:</p>
+
+    <pre><code>python3 -m venv ~/.local/share/microk8s-mcp/venv
+~/.local/share/microk8s-mcp/venv/bin/pip install microk8s-mcp</code></pre>
+
+    <p>Check it starts. The server speaks MCP over stdin, so closing stdin makes it log its
+    effective policy and exit — which is exactly the confirmation you want:</p>
+
+    <pre><code>~/.local/share/microk8s-mcp/venv/bin/microk8s-mcp &lt; /dev/null
+
+starting microk8s-mcp: mode=read-only kubeconfig=(default) node_backend=local namespaces=*</code></pre>
+
+    <p>The entry point is then
+    <code>~/.local/share/microk8s-mcp/venv/bin/microk8s-mcp</code> — that absolute path is what
+    you register in step 5.</p>
+
+    <div class="note">
+      <p><strong>The wheel is the server, not the setup.</strong> <code>rbac.yaml</code>,
+      <code>make-kubeconfig.sh</code> and the <code>make</code> targets are operator tooling and
+      deliberately stay in the repository. Installing from PyPI skips step 4 entirely, so you
+      still need those files — clone the repo anyway, or apply the RBAC and mint the kubeconfig
+      by hand on the node. You will also register with <code>claude mcp add</code> directly
+      rather than <code>make register</code>, since that target lives in the Makefile.</p>
+    </div>
+
+    <p>Given that, PyPI is the better choice when the cluster identity already exists — a second
+    workstation, a rebuild, or an upgrade — and the repository is the better choice for a first
+    install. Upgrading a PyPI install is the ordinary thing:</p>
+
+    <pre><code>~/.local/share/microk8s-mcp/venv/bin/pip install --upgrade microk8s-mcp</code></pre>
 
     <h3>Editable versus copy installs</h3>
     <p>The default is an <em>editable</em> install into <code>./.venv</code>: the venv only links
