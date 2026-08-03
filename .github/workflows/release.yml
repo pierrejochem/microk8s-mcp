@@ -118,7 +118,7 @@ jobs:
           name: dist
           path: dist/
       - name: Publish
-        uses: pypa/gh-action-pypi-publish@v1.14.1
+        uses: pypa/gh-action-pypi-publish@v1.14.2
         with:
           repository-url: ${{ inputs.testpypi && 'https://test.pypi.org/legacy/' || 'https://upload.pypi.org/legacy/' }}
           print-hash: true
