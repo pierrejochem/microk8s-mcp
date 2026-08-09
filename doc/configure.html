@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Configuration reference — microk8s-mcp environment variables</title>
-<meta name="description" content="Every microk8s-mcp environment variable with its default and effect: MICROK8S_MCP_MODE, KUBECONFIG, KUBECTL, SSH_HOST, NAMESPACES, ALLOW_ADDON_CHANGES, ALLOW_NODE_OPS and more, plus the make register switches.">
+<meta name="description" content="Every microk8s-mcp environment variable with its default and effect — mode, kubeconfig, kubectl, SSH host, namespace allowlist and the write switches.">
 <link rel="canonical" href="https://pierrejochem.github.io/microk8s-mcp/configure.html">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <meta property="og:type" content="article">
@@ -13,10 +13,77 @@
 <meta property="og:description" content="Every environment variable with its default and effect, plus the make register switches.">
 <meta property="og:url" content="https://pierrejochem.github.io/microk8s-mcp/configure.html">
 <meta property="og:image" content="https://pierrejochem.github.io/microk8s-mcp/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="microk8s-mcp — an MCP server that connects Claude Code to a MicroK8s Kubernetes cluster">
+<meta property="og:locale" content="en">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Configuration reference — microk8s-mcp environment variables">
+<meta name="twitter:description" content="Every environment variable with its default and effect, plus the make register switches.">
 <meta name="twitter:image" content="https://pierrejochem.github.io/microk8s-mcp/assets/og-image.png">
+<meta name="author" content="Pierre Jochem">
+<meta name="theme-color" content="#326ce5">
 <link rel="icon" href="assets/microk8s-mcp-mark.svg" type="image/svg+xml">
 <link rel="stylesheet" href="assets/style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://pierrejochem.github.io/microk8s-mcp/configure.html#article",
+      "headline": "Configuration",
+      "name": "Configuration reference — microk8s-mcp environment variables",
+      "description": "Every microk8s-mcp environment variable with its default and effect: MICROK8S_MCP_MODE, KUBECONFIG, KUBECTL, SSH_HOST, NAMESPACES, ALLOW_ADDON_CHANGES, ALLOW_NODE_OPS and more, plus the make register switches.",
+      "url": "https://pierrejochem.github.io/microk8s-mcp/configure.html",
+      "inLanguage": "en",
+      "datePublished": "2026-07-25",
+      "dateModified": "2026-08-09",
+      "keywords": "MicroK8s, MCP server, environment variables, configuration, Claude Code",
+      "author": {
+        "@id": "https://pierrejochem.github.io/microk8s-mcp/#author"
+      },
+      "publisher": {
+        "@id": "https://pierrejochem.github.io/microk8s-mcp/#author"
+      },
+      "isPartOf": {
+        "@id": "https://pierrejochem.github.io/microk8s-mcp/#website"
+      },
+      "about": {
+        "@id": "https://pierrejochem.github.io/microk8s-mcp/#software"
+      },
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://pierrejochem.github.io/microk8s-mcp/configure.html"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://pierrejochem.github.io/microk8s-mcp/configure.html#breadcrumb",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "microk8s-mcp",
+          "item": "https://pierrejochem.github.io/microk8s-mcp/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Configuration",
+          "item": "https://pierrejochem.github.io/microk8s-mcp/configure.html"
+        }
+      ]
+    },
+    {
+      "@type": "Person",
+      "@id": "https://pierrejochem.github.io/microk8s-mcp/#author",
+      "name": "Pierre Jochem",
+      "url": "https://github.com/pierrejochem"
+    }
+  ]
+}
+</script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -286,7 +353,8 @@ make register-rw SSH_HOST=you@your-node NAMESPACES=apps</code></pre>
 <footer>
   <p>microk8s-mcp is free software under the
   <a href="https://github.com/pierrejochem/microk8s-mcp/blob/main/LICENSE">MIT licence</a> —
-  <a href="https://github.com/pierrejochem/microk8s-mcp">source on GitHub</a>.</p>
+  <a href="https://github.com/pierrejochem/microk8s-mcp">source on GitHub</a>,
+  <a href="https://pypi.org/project/microk8s-mcp/">package on PyPI</a>.</p>
   <p>Not affiliated with Canonical or the Kubernetes project.</p>
 </footer>
 

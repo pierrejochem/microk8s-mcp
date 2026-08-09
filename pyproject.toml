@@ -1,7 +1,7 @@
 [project]
 name = "microk8s-mcp"
 version = "0.1.3"
-description = "MCP server for managing a MicroK8s cluster from the Claude CLI"
+description = "MicroK8s MCP server — manage a Kubernetes cluster from Claude Code, read-only by default"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
@@ -10,10 +10,15 @@ license-files = ["LICENSE"]
 # now mcp.server.mcpserver.MCPServer), so an unbounded floor breaks every fresh
 # install the moment 2.x resolves. Lift this with the port, not before.
 dependencies = ["mcp>=1.9,<2"]
-keywords = ["mcp", "model-context-protocol", "microk8s", "kubernetes", "claude", "kubectl", "devops"]
+keywords = [
+  "mcp", "mcp-server", "model-context-protocol", "microk8s", "kubernetes", "k8s",
+  "claude", "claude-code", "kubectl", "devops", "cluster-management", "rbac",
+  "homelab", "sre", "ai-agent",
+]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Environment :: Console",
+  "Intended Audience :: Developers",
   "Intended Audience :: System Administrators",
   # Kept in step with the CI test matrix; PyPI and the pyversions badge read these.
   "Programming Language :: Python :: 3",
@@ -21,6 +26,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Topic :: System :: Clustering",
   "Topic :: System :: Systems Administration",
   "Topic :: Utilities",
 ]
@@ -30,6 +36,7 @@ Homepage = "https://pierrejochem.github.io/microk8s-mcp/"
 Documentation = "https://pierrejochem.github.io/microk8s-mcp/"
 Source = "https://github.com/pierrejochem/microk8s-mcp"
 Issues = "https://github.com/pierrejochem/microk8s-mcp/issues"
+Changelog = "https://github.com/pierrejochem/microk8s-mcp/releases"
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.6"]

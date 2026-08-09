@@ -4,9 +4,12 @@
 [![Python versions](https://img.shields.io/pypi/pyversions/microk8s-mcp?color=326ce5)](https://pypi.org/project/microk8s-mcp/)
 [![License: MIT](https://img.shields.io/pypi/l/microk8s-mcp?color=326ce5)](https://github.com/pierrejochem/microk8s-mcp/blob/main/LICENSE)
 
-An MCP server that lets the `claude` CLI operate a MicroK8s cluster: inspect
-workloads, read logs, triage failures, and — when you unlock it — scale, apply
-manifests, restart rollouts, and manage addons.
+# microk8s-mcp — a MicroK8s MCP server for Claude Code
+
+An MCP (Model Context Protocol) server that lets the `claude` CLI operate a
+MicroK8s Kubernetes cluster: inspect workloads, read logs, triage failures,
+and — when you unlock it — scale, apply manifests, restart rollouts, and manage
+addons.
 
 The server is read-only by default, and every mutating capability sits behind a
 separate switch.

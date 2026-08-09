@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Security model — RBAC scoping for microk8s-mcp</title>
-<meta name="description" content="How microk8s-mcp limits what an AI agent can do to your Kubernetes cluster: the claude-mcp ServiceAccount, the reader and operator ClusterRoles, why RBAC is the only real boundary, and how to audit what your credential can actually do.">
+<meta name="description" content="How microk8s-mcp limits what an AI agent can do to your Kubernetes cluster: a scoped ServiceAccount, RBAC as the only real boundary, and how to audit it.">
 <link rel="canonical" href="https://pierrejochem.github.io/microk8s-mcp/security.html">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <meta property="og:type" content="article">
@@ -13,10 +13,77 @@
 <meta property="og:description" content="The two enforcement layers, which one actually binds, and how to audit what your credential can really do.">
 <meta property="og:url" content="https://pierrejochem.github.io/microk8s-mcp/security.html">
 <meta property="og:image" content="https://pierrejochem.github.io/microk8s-mcp/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="microk8s-mcp — an MCP server that connects Claude Code to a MicroK8s Kubernetes cluster">
+<meta property="og:locale" content="en">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Security model — RBAC scoping for microk8s-mcp">
+<meta name="twitter:description" content="The two enforcement layers, which one actually binds, and how to audit what your credential can really do.">
 <meta name="twitter:image" content="https://pierrejochem.github.io/microk8s-mcp/assets/og-image.png">
+<meta name="author" content="Pierre Jochem">
+<meta name="theme-color" content="#326ce5">
 <link rel="icon" href="assets/microk8s-mcp-mark.svg" type="image/svg+xml">
 <link rel="stylesheet" href="assets/style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://pierrejochem.github.io/microk8s-mcp/security.html#article",
+      "headline": "Security model",
+      "name": "Security model — RBAC scoping for microk8s-mcp",
+      "description": "How microk8s-mcp limits what an AI agent can do to your Kubernetes cluster: the claude-mcp ServiceAccount, the reader and operator ClusterRoles, why RBAC is the only real boundary, and how to audit what your credential can actually do.",
+      "url": "https://pierrejochem.github.io/microk8s-mcp/security.html",
+      "inLanguage": "en",
+      "datePublished": "2026-07-25",
+      "dateModified": "2026-08-09",
+      "keywords": "Kubernetes RBAC, ServiceAccount, least privilege, AI agent security, MicroK8s",
+      "author": {
+        "@id": "https://pierrejochem.github.io/microk8s-mcp/#author"
+      },
+      "publisher": {
+        "@id": "https://pierrejochem.github.io/microk8s-mcp/#author"
+      },
+      "isPartOf": {
+        "@id": "https://pierrejochem.github.io/microk8s-mcp/#website"
+      },
+      "about": {
+        "@id": "https://pierrejochem.github.io/microk8s-mcp/#software"
+      },
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://pierrejochem.github.io/microk8s-mcp/security.html"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://pierrejochem.github.io/microk8s-mcp/security.html#breadcrumb",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "microk8s-mcp",
+          "item": "https://pierrejochem.github.io/microk8s-mcp/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Security model",
+          "item": "https://pierrejochem.github.io/microk8s-mcp/security.html"
+        }
+      ]
+    },
+    {
+      "@type": "Person",
+      "@id": "https://pierrejochem.github.io/microk8s-mcp/#author",
+      "name": "Pierre Jochem",
+      "url": "https://github.com/pierrejochem"
+    }
+  ]
+}
+</script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -235,7 +302,8 @@ kubectl --kubeconfig ~/.kube/claude-mcp.kubeconfig auth can-i delete deployments
 <footer>
   <p>microk8s-mcp is free software under the
   <a href="https://github.com/pierrejochem/microk8s-mcp/blob/main/LICENSE">MIT licence</a> —
-  <a href="https://github.com/pierrejochem/microk8s-mcp">source on GitHub</a>.</p>
+  <a href="https://github.com/pierrejochem/microk8s-mcp">source on GitHub</a>,
+  <a href="https://pypi.org/project/microk8s-mcp/">package on PyPI</a>.</p>
   <p>Not affiliated with Canonical or the Kubernetes project.</p>
 </footer>
 
