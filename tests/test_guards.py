@@ -8,7 +8,16 @@ the model has no way to tell a refusal from a success unless the text says so.
 
 from __future__ import annotations
 
+import sys
+
 import pytest
+
+# A stand-in for "a kubectl binary that exists". Backend selection calls
+# shutil.which() on MICROK8S_MCP_KUBECTL to decide between the kubectl and node
+# backends, and subprocess.run is patched, so this is never executed -- it only
+# has to resolve. Not /bin/true: that is Linux-only, macOS ships it at
+# /usr/bin/true, and the miss silently routed this test down the node backend.
+FAKE_KUBECTL = sys.executable
 
 
 class TestReadOnlyMode:
@@ -88,11 +97,15 @@ class TestDeleteConfirmation:
 
     def test_delete_proceeds_with_confirm(self, server_with, captured_argv):
         srv = server_with(
-            MICROK8S_MCP_MODE="read-write", MICROK8S_MCP_KUBECTL="/bin/true"
+            MICROK8S_MCP_MODE="read-write", MICROK8S_MCP_KUBECTL=FAKE_KUBECTL
         )
-        srv.delete_resource(
+        out = srv.delete_resource(
             kind="configmap", name="doomed", namespace="apps", confirm=True
         )
+        # Asserted before the argv check: a backend that refuses returns its
+        # reason as a string, and without this the only symptom is an empty
+        # captured_argv that says nothing about why.
+        assert not out.startswith("ERROR:"), out
         assert len(captured_argv) == 1
         argv = captured_argv[0]
         assert "delete" in argv and "configmap" in argv and "doomed" in argv
