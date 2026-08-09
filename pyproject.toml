@@ -6,7 +6,10 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
-dependencies = ["mcp>=1.9"]
+# Upper-bounded deliberately: mcp 2.0 dropped `mcp.server.fastmcp` (FastMCP is
+# now mcp.server.mcpserver.MCPServer), so an unbounded floor breaks every fresh
+# install the moment 2.x resolves. Lift this with the port, not before.
+dependencies = ["mcp>=1.9,<2"]
 keywords = ["mcp", "model-context-protocol", "microk8s", "kubernetes", "claude", "kubectl", "devops"]
 classifiers = [
   "Development Status :: 4 - Beta",
