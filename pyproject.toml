@@ -9,7 +9,7 @@ license-files = ["LICENSE"]
 # Upper-bounded deliberately: mcp 2.0 dropped `mcp.server.fastmcp` (FastMCP is
 # now mcp.server.mcpserver.MCPServer), so an unbounded floor breaks every fresh
 # install the moment 2.x resolves. Lift this with the port, not before.
-dependencies = ["mcp>=1.9,<2"]
+dependencies = ["mcp>=1.9,<3"]
 keywords = [
   "mcp", "mcp-server", "model-context-protocol", "microk8s", "kubernetes", "k8s",
   "claude", "claude-code", "kubectl", "devops", "cluster-management", "rbac",
