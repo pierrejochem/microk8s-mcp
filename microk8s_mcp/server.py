@@ -27,7 +27,7 @@ import sys
 from dataclasses import dataclass
 from typing import Literal
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
 
 # --------------------------------------------------------------------------
@@ -245,7 +245,7 @@ def node_exec(
 # Server
 # --------------------------------------------------------------------------
 
-mcp = FastMCP(
+mcp = MCPServer(
     "microk8s",
     instructions=(
         "Manage a MicroK8s cluster. Prefer cluster_overview() to orient yourself "
